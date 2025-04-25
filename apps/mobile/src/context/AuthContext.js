@@ -143,8 +143,9 @@ export const AuthProvider = ({ children }) => {
         error,
         login,
         register,
-        logout
-    }), [user, firebaseUser, loading, error]);
+        logout,
+        setUser // Expose setUser to allow manual updates from components
+    }), [user, firebaseUser, loading, error, setUser]); // Add setUser to dependencies
 
     return (
         <AuthContext.Provider value={value}>

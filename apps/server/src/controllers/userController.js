@@ -58,8 +58,8 @@ const updateUserProfile = asyncHandler(async (req, res, next) => {
         if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
             return next(new AppError('Invalid username format.', 400));
         }
-        // Check if the new username is already taken
-        const existingUser = await User.findOne({ username });
+        // Check if the new username is already taken (case-insensitive)
+        const existingUser = await User.findOne({ username: username.toLowerCase() }); // Use toLowerCase()
         if (existingUser) {
             return next(new AppError('Username already taken.', 400));
         }
