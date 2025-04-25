@@ -22,26 +22,32 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         setLoading(true);
         const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+            const previousFirebaseUser = firebaseUser; // Keep track of previous state
             setFirebaseUser(fbUser);
-            if (fbUser) {
-                console.log('[AuthContext] Firebase user detected:', fbUser.uid);
+            
+            // Only run backend sync if the user *just* logged in 
+            // (i.e., was null before and is now detected) and we are not already handling it manually in register.
+            // Or if the user state was somehow cleared locally but firebase still has a user.
+            // Avoid syncing if it's just a token refresh detected by onAuthStateChanged.
+            if (fbUser && (!user || fbUser.uid !== previousFirebaseUser?.uid)) { 
+                console.log('[AuthContext] Firebase user detected/changed:', fbUser.uid);
                 // User logged in via Firebase, now sync with our backend
                 try {
-                    console.log('[AuthContext] Attempting backend sync...');
+                    console.log('[AuthContext] Attempting backend sync via onAuthStateChanged...');
                     const response = await apiClient.post('/api/auth/sync'); // Token attached by interceptor
                     setUser(response.data); // Store user data from our backend
                     setError(null);
-                    console.log('[AuthContext] Backend sync successful, user data set:', response.data);
+                    console.log('[AuthContext] Backend sync via onAuthStateChanged successful, user data set:', response.data);
                 } catch (err) {
-                    console.error('[AuthContext] Backend sync failed:', err.response?.data || err.message);
+                    console.error('[AuthContext] Backend sync via onAuthStateChanged failed:', err.response?.data || err.message);
                     setError(err.response?.data?.message || 'Failed to sync with backend');
                     setUser(null); // Ensure local user state is cleared on sync failure
-                    // Optional: Sign out from Firebase if backend sync consistently fails?
+                     // Optional: Sign out from Firebase if backend sync consistently fails?
                     // await signOut(auth);
                 }
-            } else {
+            } else if (!fbUser) {
                 // User logged out from Firebase
-                console.log('[AuthContext] No Firebase user detected.');
+                console.log('[AuthContext] No Firebase user detected (logged out).');
                 setUser(null); // Clear local user state
                 setError(null);
             }
@@ -50,7 +56,9 @@ export const AuthProvider = ({ children }) => {
 
         // Cleanup subscription on unmount
         return () => unsubscribe();
-    }, []);
+    // Depend on `user` state as well to re-sync if local user gets cleared somehow while firebase user exists?
+    // Be careful with dependency arrays here to avoid infinite loops.
+    }, []); // Keep dependency array minimal for now
 
     // --- Auth Functions --- 
 
@@ -72,33 +80,39 @@ export const AuthProvider = ({ children }) => {
     const register = async (email, password, username /* add other required fields like name? */) => {
         setLoading(true);
         setError(null);
+        let firebaseUserCredential = null;
         try {
             // 1. Create user in Firebase
-            await createUserWithEmailAndPassword(auth, email, password);
-            console.log('[AuthContext] Firebase user creation successful, waiting for state change...');
-            // onAuthStateChanged will fire, but the backend sync might need username
-            // We rely on onAuthStateChanged to call sync, maybe need to pass username there?
-            // This is tricky. Alternative: call sync *manually* here after user creation?
-            
-            // --- Alternative: Manual Sync Call --- 
-            // const fbUser = auth.currentUser;
-            // if (fbUser) {
-            //     try {
-            //         const token = await fbUser.getIdToken();
-            //         const response = await apiClient.post('/api/auth/sync', 
-            //             { username /*, name? */ }, // Send required data
-            //             { headers: { Authorization: `Bearer ${token}` } } // Manual token add needed if interceptor hasn't run?
-            //         );
-            //         setUser(response.data);
-            //     } catch (syncError) {
-            //         console.error('[AuthContext] Manual backend sync post-register failed:', syncError);
-            //         setError(syncError.response?.data?.message || 'Failed initial sync');
-            //         // TODO: Maybe delete the firebase user if sync fails?
-            //     }
-            // } else {
-            //     throw new Error("Firebase user not available immediately after creation.");
-            // }
-            // setLoading(false); // If doing manual sync
+            firebaseUserCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const fbUser = firebaseUserCredential.user;
+            console.log('[AuthContext] Firebase user creation successful:', fbUser.uid);
+
+            // 2. Immediately call backend sync with username
+            if (fbUser) {
+                 console.log('[AuthContext] Attempting manual backend sync post-register...');
+                try {
+                    const token = await fbUser.getIdToken();
+                    const response = await apiClient.post(
+                        '/api/auth/sync', 
+                        { username /*, name? */ }, // Send required username
+                        { headers: { Authorization: `Bearer ${token}` } } // Send token manually just in case interceptor hasn't caught up
+                    );
+                    setUser(response.data); // Set user data from backend response
+                    setError(null);
+                    console.log('[AuthContext] Manual backend sync post-register successful:', response.data);
+                } catch (syncError) {
+                    console.error('[AuthContext] Manual backend sync post-register failed:', syncError.response?.data || syncError.message);
+                    setError(syncError.response?.data?.message || 'Failed initial user sync. Please try logging in.');
+                    // Clean up? Delete the created Firebase user? Sign out?
+                    // This depends on desired UX. For now, just set error.
+                     await signOut(auth); // Log out the partially created user
+                     setUser(null);
+                }
+            } else {
+                 // Should not happen if createUserWithEmailAndPassword succeeded
+                 throw new Error("Firebase user not available immediately after creation.");
+            }
+            setLoading(false); // Set loading false after manual sync attempt
 
         } catch (err) {
             console.error('[AuthContext] Firebase registration failed:', err.code, err.message);
