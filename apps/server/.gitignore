@@ -24,4 +24,4 @@ build
 Thumbs.db
 
 # Service Account Keys (Important!)
-*.json 
+serviceAccountKey.json 
