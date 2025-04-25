@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "lude.gabrielecomparini.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Lude needs access to your location to track your activities and show your route on the map while you are using the app.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Lude needs background location access to continue tracking your activity even when the app is not open."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,6 +29,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d6166ab2-6d93-4744-b747-4cc353a324ce"
+      }
     }
   }
 }
