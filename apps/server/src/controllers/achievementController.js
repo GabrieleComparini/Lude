@@ -1,6 +1,6 @@
 const Achievement = require('../models/Achievement');
 const AchievementEarned = require('../models/AchievementEarned');
-const { asyncHandler } = require('../middleware/authMiddleware');
+const asyncHandler = require('express-async-handler');
 const AppError = require('../utils/AppError');
 
 // @desc    Get all achievement definitions

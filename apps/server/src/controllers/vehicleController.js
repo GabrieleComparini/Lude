@@ -1,6 +1,6 @@
 const Vehicle = require('../models/Vehicle');
 const User = require('../models/User'); // May be needed if updating user's default vehicle
-const { asyncHandler } = require('../middleware/authMiddleware');
+const asyncHandler = require('express-async-handler');
 const AppError = require('../utils/AppError');
 const cloudinary = require('../config/cloudinary'); // Import cloudinary
 const mongoose = require('mongoose'); // Import mongoose for ObjectId validation
