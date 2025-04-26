@@ -1,6 +1,6 @@
 const Track = require('../models/Track');
 const User = require('../models/User'); // Needed to update user stats
-const { asyncHandler } = require('../middleware/authMiddleware');
+const asyncHandler = require('express-async-handler');
 const AppError = require('../utils/AppError');
 const mongoose = require('mongoose');
 const { checkAchievements } = require('../services/achievementService'); // Import achievement service
