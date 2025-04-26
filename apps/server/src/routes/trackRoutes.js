@@ -12,8 +12,6 @@ const { handleReaction } = require('../controllers/reactionController');
 
 const router = express.Router();
 
-console.log("Track routes file loaded. Setting up POST /api/tracks..."); // <-- LOG QUI
-
 // --- Mount Comment Router ---
 // Redirect routes starting with /:trackId/comments to commentRouter
 const commentRouter = require('./commentRoutes');

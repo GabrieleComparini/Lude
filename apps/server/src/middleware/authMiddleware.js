@@ -1,12 +1,12 @@
 const admin = require('../config/firebaseAdmin');
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-const asyncHandler = require('express-async-handler');
-const AppError = require('../utils/AppError');
+
+// Utility function to handle async route handlers
+const asyncHandler = fn => (req, res, next) =>
+    Promise.resolve(fn(req, res, next)).catch(next);
 
 // Middleware to verify Firebase ID token and attach user to request
 const protect = asyncHandler(async (req, res, next) => {
-    console.log("ENTERING protect middleware for request:", req.method, req.originalUrl);
     let token;
 
     if (
@@ -27,7 +27,7 @@ const protect = asyncHandler(async (req, res, next) => {
             req.firebaseUser = decodedToken; // Attach decoded token info
 
             // Find user in our DB using the Firebase UID
-            const user = await User.findOne({ firebaseUid: decodedToken.uid }).select('-password');
+            const user = await User.findOne({ firebaseUid: decodedToken.uid });
 
             if (!user) {
                 // User exists in Firebase but not yet synced to our DB.
@@ -40,40 +40,27 @@ const protect = asyncHandler(async (req, res, next) => {
                 req.user = user;
             }
 
-            console.log("Protect middleware SUCCESS, calling next(). User:", req.user ? req.user.username : 'undefined');
             next(); // Proceed to the next middleware/controller
         } catch (error) {
-            console.error('Protect Error:', error.name, error.message);
-            if (error.name === 'JsonWebTokenError') {
-                return next(new AppError('Not authorized, token failed', 401));
-            } else if (error.name === 'TokenExpiredError') {
-                return next(new AppError('Not authorized, token expired', 401));
-            } else {
-                // For other potential errors during verification
-                return next(new AppError('Not authorized, token verification issue', 401));
+            console.error('Authentication Error:', error.code, error.message);
+            if (error.code === 'auth/id-token-expired') {
+                return res.status(401).json({ message: 'Not authorized, token expired' });
             }
+            // Handle other potential errors like revoked token, invalid token etc.
+            res.status(401).json({ message: 'Not authorized, token verification failed' });
         }
     } else {
         // No token provided
-        console.log("Protect Middleware: No token found in headers.");
-        // Allow request to proceed if no token, but req.user will be undefined
-        // Other middleware or route handlers can check for req.user if authentication is strictly required
-        // For strictly protected routes, we might want to send error here.
-        // Let's assume for now some routes might be optionally protected.
-        // Changed: For actual *protected* routes, we NEED a token.
-        return next(new AppError('Not authorized, no token', 401));
+        res.status(401).json({ message: 'Not authorized, no token provided' });
     }
 });
 
 // Optional: Middleware to ensure user is fully synced/exists in local DB
 // Use this *after* protect on routes that require a synced user
 const ensureSynced = (req, res, next) => {
-    console.log("ENTERING ensureSynced middleware");
     if (!req.user) {
-        console.error("EnsureSynced Error: req.user not found after protect middleware.");
         return res.status(403).json({ message: 'User profile not yet synchronized. Please complete registration or sync first.' });
     }
-    console.log("EnsureSynced SUCCESS, calling next(). User:", req.user.username);
     next();
 };
 
@@ -84,6 +71,7 @@ const isAdmin = (req, res, next) => {
         next(); // User is an admin, proceed
     } else {
         // Use AppError for consistent error handling if available
+        const AppError = require('../utils/AppError'); // Require AppError locally
         if (AppError) {
              next(new AppError('Forbidden: Administrator privileges required', 403));
         } else {
@@ -98,4 +86,5 @@ module.exports = {
     protect,
     ensureSynced,
     isAdmin, // Export the isAdmin middleware
+    asyncHandler // Export asyncHandler if used elsewhere
 }; 

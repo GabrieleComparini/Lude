@@ -1,6 +1,5 @@
 const User = require('../models/User');
-const asyncHandler = require('express-async-handler');
-const { protect, ensureSynced } = require('../middleware/authMiddleware');
+const { asyncHandler, protect, ensureSynced } = require('../middleware/authMiddleware');
 const AppError = require('../utils/AppError'); // Assuming AppError utility exists for custom errors
 const cloudinary = require('../config/cloudinary'); // Need cloudinary to potentially delete old images
 const { checkAchievements } = require('../services/achievementService'); // Import achievement service

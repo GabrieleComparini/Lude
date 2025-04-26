@@ -1,6 +1,6 @@
 const Track = require('../models/Track');
 const User = require('../models/User'); // Needed to update user stats
-const asyncHandler = require('express-async-handler');
+const { asyncHandler } = require('../middleware/authMiddleware');
 const AppError = require('../utils/AppError');
 const mongoose = require('mongoose');
 const { checkAchievements } = require('../services/achievementService'); // Import achievement service
@@ -10,7 +10,6 @@ const { updateChallengeProgressOnTrackSave } = require('../services/challengeSer
 // @route   POST /api/tracks
 // @access  Private (Synced user required)
 const saveTrack = asyncHandler(async (req, res, next) => {
-    console.log("ENTERING saveTrack function");
     const userId = req.user._id;
     const {
         vehicleId, // Optional

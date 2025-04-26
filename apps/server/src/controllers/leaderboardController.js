@@ -1,5 +1,5 @@
 const Leaderboard = require('../models/Leaderboard');
-const asyncHandler = require('express-async-handler');
+const { asyncHandler } = require('../middleware/authMiddleware');
 const AppError = require('../utils/AppError');
 
 // @desc    Get the latest leaderboard for a specific type
