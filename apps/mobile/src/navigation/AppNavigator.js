@@ -10,6 +10,7 @@ import StatsScreen from '../screens/App/StatsScreen';
 import SettingsScreen from '../screens/App/SettingsScreen';
 import ProfileScreen from '../screens/App/ProfileScreen'; // Import ProfileScreen
 import EditProfileScreen from '../screens/App/EditProfileScreen'; // Import EditProfileScreen
+import SaveTrackScreen from '../screens/App/SaveTrackScreen'; // <-- Import SaveTrackScreen
 // Import other screens needed in stacks (e.g., TripDetail, VehicleList etc later)
 
 const Tab = createBottomTabNavigator();
@@ -27,6 +28,11 @@ function MapStackNavigator() {
         screenOptions={AppNavigatorScreenOptions.stack} // Apply consistent styles
     >
       <MapStack.Screen name="MapHome" component={MapScreen} options={{ title: 'Map'}} />
+      <MapStack.Screen 
+          name="SaveTrack" 
+          component={SaveTrackScreen} 
+          options={{ title: 'Save Track' }} // Set header title for the screen
+      />
       {/* Add screens navigable from Map, like Profile */}
       <MapStack.Screen name="Profile" component={ProfileScreen} />
       <MapStack.Screen name="EditProfile" component={EditProfileScreen} />
