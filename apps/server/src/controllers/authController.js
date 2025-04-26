@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { asyncHandler } = require('../middleware/authMiddleware'); // Use asyncHandler for error handling
+const asyncHandler = require('express-async-handler'); // Use asyncHandler for error handling
 
 // @desc    Sync Firebase user with local DB (Handles login and initial registration)
 // @route   POST /api/auth/sync
