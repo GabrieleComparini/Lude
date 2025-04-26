@@ -10,6 +10,7 @@ const { updateChallengeProgressOnTrackSave } = require('../services/challengeSer
 // @route   POST /api/tracks
 // @access  Private (Synced user required)
 const saveTrack = asyncHandler(async (req, res, next) => {
+    console.log("ENTERING saveTrack function");
     const userId = req.user._id;
     const {
         vehicleId, // Optional
