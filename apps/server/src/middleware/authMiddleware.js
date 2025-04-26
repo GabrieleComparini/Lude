@@ -4,10 +4,6 @@ const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const AppError = require('../utils/AppError');
 
-// Utility function to handle async route handlers
-const asyncHandler = fn => (req, res, next) =>
-    Promise.resolve(fn(req, res, next)).catch(next);
-
 // Middleware to verify Firebase ID token and attach user to request
 const protect = asyncHandler(async (req, res, next) => {
     console.log("ENTERING protect middleware for request:", req.method, req.originalUrl);
@@ -102,5 +98,4 @@ module.exports = {
     protect,
     ensureSynced,
     isAdmin, // Export the isAdmin middleware
-    asyncHandler // Export asyncHandler if used elsewhere
 }; 
