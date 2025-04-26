@@ -1,5 +1,5 @@
 const Track = require('../models/Track');
-const { asyncHandler } = require('../middleware/authMiddleware');
+const asyncHandler = require('express-async-handler');
 const AppError = require('../utils/AppError');
 const mongoose = require('mongoose');
 
