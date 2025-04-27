@@ -76,8 +76,8 @@ const SaveTrackScreen = () => {
         const trackData = {
              // Ensure route points have valid, non-null values where required by backend
             route: routeCoordinates.map(p => ({
-                latitude: p.latitude,
-                longitude: p.longitude,
+                lat: p.latitude,
+                lng: p.longitude,
                 altitude: p.altitude ?? null, // Send null if undefined/null
                 speed: p.speed ?? 0,      // Send 0 if undefined/null
                 timestamp: p.timestamp    // Assume timestamp is always present
@@ -104,15 +104,28 @@ const SaveTrackScreen = () => {
         }
 
         try {
-            console.log("Saving track data...", /* Removed verbose logging for brevity */);
-            await apiClient.post('/api/tracks', trackData);
+            console.log("Saving track data with route length:", trackData.route.length);
+            console.log("First route point:", JSON.stringify(trackData.route[0]));
+            console.log("Last route point:", JSON.stringify(trackData.route[trackData.route.length - 1]));
+            
+            const response = await apiClient.post('/api/tracks', trackData);
+            console.log("Track saved successfully, response:", response.status, response.data);
+            
             setLoading(false);
             Alert.alert('Success', 'Track saved successfully!');
-            // Navigate back to Map or maybe to History tab?
-            navigation.navigate('HistoryTab', { screen: 'HistoryList' }); // Go to history list
-             // navigation.goBack(); // Alternative: just go back to map
+            
+            // Try to navigate to history tab, fall back to going back if it fails
+            try {
+                navigation.navigate('HistoryTab', { screen: 'HistoryList' });
+            } catch (navError) {
+                console.error('Navigation error:', navError);
+                // Fall back to going back
+                navigation.goBack();
+            }
         } catch (err) {
-            console.error('Error saving track:', err.response?.data || err.message);
+            console.error('Error saving track:', err);
+            console.error('Error response data:', err.response?.data);
+            console.error('Error status:', err.response?.status);
             const message = err.response?.data?.message || 'Failed to save track. Please try again.';
             setError(message);
             setLoading(false);
