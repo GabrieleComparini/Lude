@@ -117,10 +117,13 @@ const MapScreen = () => {
                     distanceInterval: 5,
                 },
                 (location) => {
-                    const { latitude, longitude, speed, altitude, timestamp } = location.coords;
-                    const newPoint = { latitude, longitude, speed, altitude, timestamp };
+                    const { latitude, longitude, speed, altitude } = location.coords;
+                    const timestamp = location.timestamp;
+                    // Ensure we never store negative speed values
+                    const validSpeed = (speed !== undefined && speed >= 0) ? speed : 0;
+                    const newPoint = { latitude, longitude, speed: validSpeed, altitude, timestamp };
 
-                    setCurrentSpeed(speed && speed > 0 ? speed : 0);
+                    setCurrentSpeed(validSpeed);
 
                     setRouteCoordinates(prevCoords => {
                         const updatedCoords = [...prevCoords, newPoint];
@@ -165,7 +168,13 @@ const MapScreen = () => {
             console.log("Location tracking stopped.");
         }
         setIsTracking(false);
-        console.log("Final Route Coordinates:", routeCoordinates);
+        
+        // Log more detailed coordinates info
+        console.log(`Final Route Coordinates (${routeCoordinates.length} points):`);
+        routeCoordinates.forEach((point, idx) => {
+            console.log(`Point ${idx}: lat=${point.latitude}, lng=${point.longitude}, speed=${point.speed}, timestamp=${point.timestamp}`);
+        });
+        
         const finalDistance = distanceTravelled;
         const finalTime = elapsedTime;
 

@@ -11,6 +11,7 @@ import SettingsScreen from '../screens/App/SettingsScreen';
 import ProfileScreen from '../screens/App/ProfileScreen'; // Import ProfileScreen
 import EditProfileScreen from '../screens/App/EditProfileScreen'; // Import EditProfileScreen
 import SaveTrackScreen from '../screens/App/SaveTrackScreen'; // <-- Import SaveTrackScreen
+import TripDetailScreen from '../screens/App/TripDetailScreen'; // Import TripDetailScreen
 // Import other screens needed in stacks (e.g., TripDetail, VehicleList etc later)
 
 const Tab = createBottomTabNavigator();
@@ -45,7 +46,7 @@ function HistoryStackNavigator() {
   return (
     <HistoryStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
       <HistoryStack.Screen name="HistoryList" component={HistoryScreen} options={{ title: 'Trip History'}} />
-      {/* <HistoryStack.Screen name="TripDetail" component={TripDetailScreen} /> */}
+      <HistoryStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
     </HistoryStack.Navigator>
   );
 }
