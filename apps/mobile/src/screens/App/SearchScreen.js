@@ -1,45 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-
-// Placeholder data for user search results
-const DUMMY_USERS = [
-  { id: '1', username: 'user1', name: 'John Doe', avatar: null },
-  { id: '2', username: 'user2', name: 'Jane Smith', avatar: null },
-  { id: '3', username: 'user3', name: 'Mike Johnson', avatar: null },
-  { id: '4', username: 'user4', name: 'Sarah Williams', avatar: null },
-];
+import { searchUsers } from '../../api/services/userService';
+import { useFocusEffect } from '@react-navigation/native';
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const navigation = useNavigation();
 
-  // Simulate search
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      if (query.trim() === '') {
+  // Reset search results when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setSearchQuery('');
         setSearchResults([]);
-      } else {
-        const filtered = DUMMY_USERS.filter(user => 
-          user.username.toLowerCase().includes(query.toLowerCase()) || 
-          user.name.toLowerCase().includes(query.toLowerCase())
-        );
-        setSearchResults(filtered);
-      }
+      };
+    }, [])
+  );
+
+  // Handle search with real API
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const results = await searchUsers(query);
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError('Si è verificato un errore durante la ricerca. Riprova più tardi.');
+      setSearchResults([]);
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   const navigateToUserProfile = (username) => {
-    // In future: navigation.navigate('PublicProfile', { username })
-    console.log('Navigate to profile for:', username);
+    navigation.navigate('PublicProfile', { username });
   };
 
   const renderSearchItem = ({ item }) => (
@@ -48,10 +56,12 @@ const SearchScreen = () => {
       onPress={() => navigateToUserProfile(item.username)}
     >
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+        <Text style={styles.avatarText}>
+          {item.name ? item.name.charAt(0).toUpperCase() : item.username.charAt(0).toUpperCase()}
+        </Text>
       </View>
       <View style={styles.userInfo}>
-        <Text style={styles.name}>{item.name}</Text>
+        <Text style={styles.name}>{item.name || item.username}</Text>
         <Text style={styles.username}>@{item.username}</Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color="#666" />
@@ -79,6 +89,11 @@ const SearchScreen = () => {
 
       {isLoading ? (
         <ActivityIndicator style={styles.loader} size="large" color="#007AFF" />
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={60} color="#FF3B30" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
       ) : searchResults.length > 0 ? (
         <FlatList
           data={searchResults}
@@ -172,6 +187,18 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
     marginTop: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 16,
   }
 });
 

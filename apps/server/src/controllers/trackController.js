@@ -192,24 +192,51 @@ const getPublicTracks = asyncHandler(async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
+    
+    // Filtro di base per i tracciati pubblici
+    let query = { isPublic: true };
+    
+    // Se è specificato username, cerchiamo prima l'utente
+    if (req.query.username) {
+        try {
+            const user = await User.findOne({ username: req.query.username });
+            if (!user) {
+                // L'utente non esiste, restituiamo un array vuoto
+                return res.status(200).json({
+                    currentPage: page,
+                    totalPages: 0,
+                    totalTracks: 0,
+                    tracks: []
+                });
+            }
+            // Aggiungiamo il filtro per userId
+            query.userId = user._id;
+        } catch (err) {
+            console.error(`Error finding user with username ${req.query.username}:`, err);
+            return next(new AppError('Error processing username filter', 500));
+        }
+    }
 
-    // Optional: Add filtering/sorting options later (e.g., by distance, nearest)
+    try {
+        const totalTracks = await Track.countDocuments(query);
+        const tracks = await Track.find(query)
+                                  .sort({ startTime: -1 })
+                                  .skip(skip)
+                                  .limit(limit)
+                                  .select('-route')
+                                  .populate('userId', 'username name profileImage')
+                                  .populate('vehicleId', 'make model nickname');
 
-    const totalTracks = await Track.countDocuments({ isPublic: true });
-    const tracks = await Track.find({ isPublic: true })
-                              .sort({ startTime: -1 })
-                              .skip(skip)
-                              .limit(limit)
-                              .select('-route')
-                              .populate('userId', 'username name profileImage')
-                              .populate('vehicleId', 'make model nickname');
-
-     res.status(200).json({
-        currentPage: page,
-        totalPages: Math.ceil(totalTracks / limit),
-        totalTracks,
-        tracks
-    });
+        res.status(200).json({
+            currentPage: page,
+            totalPages: Math.ceil(totalTracks / limit),
+            totalTracks,
+            tracks
+        });
+    } catch (err) {
+        console.error('Error fetching public tracks:', err);
+        return next(new AppError('Failed to fetch tracks', 500));
+    }
 });
 
 // @desc    Update track details (description, tags, isPublic)

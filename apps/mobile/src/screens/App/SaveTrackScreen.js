@@ -13,7 +13,7 @@ import {
     Platform
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import apiClient from '../../api/client';
+import { saveTrack } from '../../api/services/trackService';
 import { useAuth } from '../../context/AuthContext'; // To potentially get default settings or vehicles later
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters'; // Assuming we move helpers
 
@@ -136,8 +136,8 @@ const SaveTrackScreen = () => {
             console.log("First route point:", JSON.stringify(trackData.route[0]));
             console.log("Last route point:", JSON.stringify(trackData.route[trackData.route.length - 1]));
             
-            const response = await apiClient.post('/api/tracks', trackData);
-            console.log("Track saved successfully, response:", response.status, response.data);
+            const savedTrack = await saveTrack(trackData);
+            console.log("Track saved successfully, response:", savedTrack);
             
             setLoading(false);
             Alert.alert('Success', 'Track saved successfully!');

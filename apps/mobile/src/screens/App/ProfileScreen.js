@@ -1,33 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { getUserStatistics } from '../../api/services/userService';
+import { getUserTracks } from '../../api/services/trackService';
+import { getDefaultVehicle } from '../../api/services/vehicleService';
+import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
+import VehicleCard from '../../components/VehicleCard';
 
 // Placeholder components for section content
-const StatsSection = ({ userStats }) => {
+const StatsSection = ({ userStats, loading }) => {
+  if (loading) {
+    return (
+      <View style={[styles.statsContainer, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Caricamento statistiche...</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={styles.statsContainer}>
       <Text style={styles.sectionTitle}>Le mie statistiche</Text>
       
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{userStats.totalDistance.toFixed(1)}</Text>
+          <Text style={styles.statValue}>{userStats.totalDistance ? formatDistance(userStats.totalDistance) : '0'}</Text>
           <Text style={styles.statLabel}>Km totali</Text>
         </View>
         
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{Math.floor(userStats.totalTime / 3600)}</Text>
+          <Text style={styles.statValue}>{userStats.totalTime ? Math.floor(userStats.totalTime / 3600) : '0'}</Text>
           <Text style={styles.statLabel}>Ore totali</Text>
         </View>
         
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{userStats.topSpeed.toFixed(1)}</Text>
+          <Text style={styles.statValue}>{userStats.topSpeed ? formatSpeed(userStats.topSpeed) : '0'}</Text>
           <Text style={styles.statLabel}>Km/h max</Text>
         </View>
         
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{userStats.avgSpeed.toFixed(1)}</Text>
+          <Text style={styles.statValue}>{userStats.avgSpeed ? formatSpeed(userStats.avgSpeed) : '0'}</Text>
           <Text style={styles.statLabel}>Km/h media</Text>
         </View>
       </View>
@@ -52,37 +66,26 @@ const HistoryItem = ({ track, onPress }) => {
     });
   };
 
-  const formatDuration = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
-    }
-  };
-
   return (
     <TouchableOpacity style={styles.historyItem} onPress={onPress}>
       <View style={styles.historyInfo}>
-        <Text style={styles.historyTitle}>{track.title}</Text>
-        <Text style={styles.historyDate}>{formatDate(track.createdAt)}</Text>
+        <Text style={styles.historyTitle}>{track.description || 'No title'}</Text>
+        <Text style={styles.historyDate}>{formatDate(track.startTime)}</Text>
         
         <View style={styles.historyStats}>
           <View style={styles.historyStat}>
             <Ionicons name="time-outline" size={14} color="#999" />
-            <Text style={styles.historyStatText}>{formatDuration(track.duration)}</Text>
+            <Text style={styles.historyStatText}>{formatTime(track.duration)}</Text>
           </View>
           
           <View style={styles.historyStat}>
             <Ionicons name="resize-outline" size={14} color="#999" />
-            <Text style={styles.historyStatText}>{track.distance.toFixed(1)} km</Text>
+            <Text style={styles.historyStatText}>{formatDistance(track.distance)} km</Text>
           </View>
           
           <View style={styles.historyStat}>
             <Ionicons name="speedometer-outline" size={14} color="#999" />
-            <Text style={styles.historyStatText}>{track.avgSpeed.toFixed(1)} km/h</Text>
+            <Text style={styles.historyStatText}>{formatSpeed(track.avgSpeed)} km/h</Text>
           </View>
         </View>
       </View>
@@ -92,7 +95,16 @@ const HistoryItem = ({ track, onPress }) => {
   );
 };
 
-const HistorySection = ({ tracks, onTrackPress }) => {
+const HistorySection = ({ tracks, onTrackPress, loading }) => {
+  if (loading) {
+    return (
+      <View style={[styles.historyContainer, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Caricamento tracciati...</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={styles.historyContainer}>
       <View style={styles.sectionHeader}>
@@ -102,9 +114,9 @@ const HistorySection = ({ tracks, onTrackPress }) => {
       
       {tracks.map((track) => (
         <HistoryItem 
-          key={track.id} 
+          key={track._id} 
           track={track} 
-          onPress={() => onTrackPress(track.id)}
+          onPress={() => onTrackPress(track._id)}
         />
       ))}
       
@@ -117,48 +129,87 @@ const HistorySection = ({ tracks, onTrackPress }) => {
   );
 };
 
-// Placeholder data
-const PLACEHOLDER_USER_STATS = {
-  totalDistance: 1250.8,  // km
-  totalTime: 86400,       // seconds (24 hours)
-  topSpeed: 180.5,        // km/h
-  avgSpeed: 65.2,         // km/h
-};
-
-const PLACEHOLDER_TRACKS = [
-  {
-    id: 't1',
-    title: 'Morning Ride',
-    createdAt: new Date().toISOString(),
-    distance: 12.5,
-    duration: 3600, // in seconds
-    avgSpeed: 25.3,
-  },
-  {
-    id: 't2',
-    title: 'Mountain Route',
-    createdAt: new Date(Date.now() - 86400000).toISOString(), // yesterday
-    distance: 28.3,
-    duration: 7200, // in seconds
-    avgSpeed: 22.1,
-  },
-  {
-    id: 't3',
-    title: 'City Tour',
-    createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-    distance: 8.7,
-    duration: 2400, // in seconds
-    avgSpeed: 15.5,
-  },
-];
-
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
-  const [userStats, setUserStats] = useState(PLACEHOLDER_USER_STATS);
-  const [userTracks, setUserTracks] = useState(PLACEHOLDER_TRACKS);
+  const [userStats, setUserStats] = useState({
+    totalDistance: 0,
+    totalTime: 0,
+    topSpeed: 0,
+    avgSpeed: 0
+  });
+  const [userTracks, setUserTracks] = useState([]);
+  const [defaultVehicle, setDefaultVehicle] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingTracks, setLoadingTracks] = useState(true);
+  const [loadingVehicle, setLoadingVehicle] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Add useEffect to fetch user data in real implementation
+  // Fetch user stats and recent tracks
+  const loadUserData = async () => {
+    setError(null);
+    
+    // Fetch user statistics
+    try {
+      setLoadingStats(true);
+      const stats = await getUserStatistics();
+      setUserStats(stats);
+    } catch (err) {
+      console.error('Error fetching user statistics:', err);
+      setError('Failed to load user statistics');
+    } finally {
+      setLoadingStats(false);
+    }
+    
+    // Fetch recent tracks
+    try {
+      setLoadingTracks(true);
+      const response = await getUserTracks(1, 5); // Get first page with 5 tracks
+      
+      // Assicuriamoci che tracks sia sempre un array
+      if (response && Array.isArray(response.tracks)) {
+        setUserTracks(response.tracks);
+      } else if (response && typeof response.tracks === 'undefined') {
+        // Se tracks è undefined, imposta un array vuoto
+        setUserTracks([]);
+        console.warn("La risposta non contiene un array tracks:", response);
+      } else {
+        // Se la risposta è malformata, imposta un array vuoto
+        setUserTracks([]);
+        console.warn("Risposta malformata dal server:", response);
+      }
+    } catch (err) {
+      console.error('Error fetching recent tracks:', err);
+      setError('Failed to load recent tracks');
+    } finally {
+      setLoadingTracks(false);
+    }
+    
+    // Fetch default vehicle
+    try {
+      setLoadingVehicle(true);
+      const vehicle = await getDefaultVehicle();
+      setDefaultVehicle(vehicle);
+    } catch (err) {
+      console.error('Error fetching default vehicle:', err);
+      // Non mostriamo errore per il veicolo
+    } finally {
+      setLoadingVehicle(false);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadUserData();
+    setRefreshing(false);
+  };
 
   const handleEditProfile = () => {
     navigation.navigate('EditProfile');
@@ -168,8 +219,29 @@ const ProfileScreen = () => {
     navigation.navigate('TripDetail', { trackId });
   };
 
+  const handleViewAllTracks = () => {
+    navigation.navigate('HistoryTab');
+  };
+  
+  const handleVehiclePress = () => {
+    if (defaultVehicle) {
+      navigation.navigate('Vehicles', { screen: 'VehicleDetail', params: { vehicleId: defaultVehicle._id } });
+    } else {
+      navigation.navigate('Vehicles', { screen: 'VehicleList' });
+    }
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          colors={['#007AFF']}
+        />
+      }
+    >
       {/* Profile Header */}
       <View style={styles.header}>
         <View style={styles.profileInfo}>
@@ -200,11 +272,54 @@ const ProfileScreen = () => {
         </View>
       </View>
       
+      {/* Sezione Veicolo Predefinito */}
+      {!loadingVehicle && (
+        <View style={styles.vehicleContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Il mio veicolo</Text>
+            <TouchableOpacity 
+              style={styles.garageButton} 
+              onPress={() => navigation.navigate('Vehicles')}
+            >
+              <Ionicons name="car-sport" size={16} color="#007AFF" />
+              <Text style={styles.viewAllText}>Garage</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {defaultVehicle ? (
+            <VehicleCard 
+              vehicle={defaultVehicle} 
+              onPress={handleVehiclePress}
+            />
+          ) : (
+            <TouchableOpacity 
+              style={styles.addVehicleButton}
+              onPress={() => navigation.navigate('Vehicles', { screen: 'AddVehicle' })}
+            >
+              <Ionicons name="add-circle" size={28} color="#007AFF" />
+              <Text style={styles.addVehicleText}>Aggiungi un veicolo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      
       {/* Statistics Section */}
-      <StatsSection userStats={userStats} />
+      <StatsSection userStats={userStats} loading={loadingStats} />
       
       {/* Track History Section */}
-      <HistorySection tracks={userTracks} onTrackPress={handleTrackPress} />
+      <HistorySection 
+        tracks={userTracks} 
+        onTrackPress={handleTrackPress} 
+        loading={loadingTracks} 
+      />
+      
+      {/* View All Tracks Button */}
+      {userTracks.length > 0 && (
+        <TouchableOpacity style={styles.viewAllButton} onPress={handleViewAllTracks}>
+          <Text style={styles.viewAllText}>Vedi tutti i tracciati</Text>
+          <Ionicons name="arrow-forward" size={16} color="#007AFF" />
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -397,6 +512,53 @@ const styles = StyleSheet.create({
   emptyHistoryText: {
     color: '#666',
     fontSize: 16,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    minHeight: 200,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#999',
+    fontSize: 14,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: 30,
+  },
+  viewAllText: {
+    color: '#007AFF',
+    fontSize: 16,
+    marginRight: 5,
+  },
+  garageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  vehicleContainer: {
+    padding: 16,
+    backgroundColor: '#1c1c1e',
+    marginTop: 12,
+  },
+  addVehicleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2c2c2e',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  addVehicleText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
 });
 

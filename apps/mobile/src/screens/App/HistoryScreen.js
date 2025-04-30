@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import apiClient from '../../api/client';
+import { getUserTracks } from '../../api/services/trackService';
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
 
 // Component per visualizzare ogni elemento della lista tracciati
@@ -68,8 +68,8 @@ const HistoryScreen = () => {
         setError(null);
         
         try {
-            const response = await apiClient.get(`/api/tracks/list?page=${pageNum}&limit=10`);
-            const { tracks: newTracks, totalPages, totalTracks: total } = response.data;
+            const response = await getUserTracks(pageNum, 10);
+            const { tracks: newTracks, totalPages, totalTracks: total } = response;
             
             setTotalTracks(total);
             setHasMorePages(pageNum < totalPages);

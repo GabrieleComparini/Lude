@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { likeTrack, unlikeTrack } from '../api/services/feedService';
 
 // Utility function to format date
 const formatDate = (dateString) => {
@@ -27,15 +28,54 @@ const formatDuration = (seconds) => {
 
 const TrackCard = ({ feed }) => {
   const navigation = useNavigation();
-  const { user, track, likes, comments } = feed;
+  const { user, track, likes: initialLikes, comments: initialComments, isLiked: initialIsLiked = false } = feed;
+  
+  const [isLiked, setIsLiked] = useState(initialIsLiked);
+  const [likesCount, setLikesCount] = useState(initialLikes || 0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigateToTrackDetail = () => {
     navigation.navigate('TripDetail', { trackId: track.id });
   };
 
   const navigateToUserProfile = () => {
-    console.log('Navigate to profile for:', user.username);
-    // In future: navigation.navigate('PublicProfile', { username: user.username });
+    navigation.navigate('PublicProfile', { username: user.username });
+  };
+
+  const navigateToComments = () => {
+    navigation.navigate('Comments', { trackId: track.id });
+  };
+
+  const handleLikePress = async () => {
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      if (isLiked) {
+        await unlikeTrack(track.id);
+        setLikesCount(prev => Math.max(prev - 1, 0));
+        setIsLiked(false);
+      } else {
+        await likeTrack(track.id);
+        setLikesCount(prev => prev + 1);
+        setIsLiked(true);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert(
+        'Errore',
+        'Impossibile aggiornare il like. Riprova più tardi.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSharePress = () => {
+    Alert.alert(
+      'Condivisione',
+      'Funzionalità di condivisione non ancora implementata.'
+    );
   };
 
   // Placeholder for Map Preview
@@ -53,10 +93,12 @@ const TrackCard = ({ feed }) => {
         onPress={navigateToUserProfile}
       >
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
+          <Text style={styles.avatarText}>
+            {user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+          </Text>
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userName}>{user.name || user.username}</Text>
           <Text style={styles.date}>{formatDate(track.createdAt)}</Text>
         </View>
       </TouchableOpacity>
@@ -87,15 +129,25 @@ const TrackCard = ({ feed }) => {
       
       {/* Interaction buttons */}
       <View style={styles.actionsContainer}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="heart-outline" size={22} color="#999" />
-          <Text style={styles.actionText}>{likes}</Text>
+        <TouchableOpacity 
+          style={styles.actionButton} 
+          onPress={handleLikePress}
+          disabled={isSubmitting}
+        >
+          <Ionicons 
+            name={isLiked ? "heart" : "heart-outline"} 
+            size={22} 
+            color={isLiked ? "#FF3B30" : "#999"} 
+          />
+          <Text style={[styles.actionText, isLiked && styles.likedText]}>
+            {likesCount}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={navigateToComments}>
           <Ionicons name="chatbubble-outline" size={22} color="#999" />
-          <Text style={styles.actionText}>{comments}</Text>
+          <Text style={styles.actionText}>{initialComments || 0}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
           <Ionicons name="share-social-outline" size={22} color="#999" />
         </TouchableOpacity>
       </View>
@@ -193,6 +245,9 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 14,
     marginLeft: 5,
+  },
+  likedText: {
+    color: '#FF3B30',
   },
 });
 

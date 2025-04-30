@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Import Stack Navigator
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, View, Text } from 'react-native';
 
 // Import Screens
 import MapScreen from '../screens/App/MapScreen';
@@ -13,11 +13,16 @@ import SettingsScreen from '../screens/App/SettingsScreen';
 import EditProfileScreen from '../screens/App/EditProfileScreen';
 import SaveTrackScreen from '../screens/App/SaveTrackScreen';
 import TripDetailScreen from '../screens/App/TripDetailScreen';
+import CommentsScreen from '../screens/App/CommentsScreen';
+import PublicProfileScreen from '../screens/App/PublicProfileScreen';
 // Import Vehicle screens
 import VehicleListScreen from '../screens/App/VehicleListScreen';
 import VehicleDetailScreen from '../screens/App/VehicleDetailScreen';
 import AddVehicleScreen from '../screens/App/AddVehicleScreen';
 import EditVehicleScreen from '../screens/App/EditVehicleScreen';
+
+// Placeholder removing
+// const PublicProfileScreen = () => <ProfileScreen isPublic={true} />;
 
 const Tab = createBottomTabNavigator();
 const MapStack = createNativeStackNavigator();
@@ -63,6 +68,9 @@ function MapStackNavigator() {
             headerShown: false
           }}
       />
+      <MapStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <MapStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <MapStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
     </MapStack.Navigator>
   );
 }
@@ -71,7 +79,9 @@ function SearchStackNavigator() {
   return (
     <SearchStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
       <SearchStack.Screen name="SearchUsers" component={SearchScreen} options={{ title: 'Cerca' }} />
+      <SearchStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
       <SearchStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <SearchStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
     </SearchStack.Navigator>
   );
 }
@@ -81,6 +91,8 @@ function ExploreStackNavigator() {
     <ExploreStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
       <ExploreStack.Screen name="ExploreFeed" component={ExploreScreen} options={{ title: 'Explore', headerShown: false }} />
       <ExploreStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <ExploreStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <ExploreStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
     </ExploreStack.Navigator>
   );
 }
@@ -103,6 +115,8 @@ function ProfileStackNavigator() {
       <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} options={{ title: 'Profilo' }} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
       <ProfileStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <ProfileStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <ProfileStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
       <ProfileStack.Screen 
           name="Vehicles" 
           component={VehicleStackNavigator} 

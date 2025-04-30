@@ -6,12 +6,13 @@ import {
   ScrollView, 
   ActivityIndicator, 
   Alert,
-  Dimensions
+  Dimensions,
+  TouchableOpacity
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import apiClient from '../../api/client';
+import { getTrackById, updateTrack } from '../../api/services/trackService';
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
 
 const { width } = Dimensions.get('window');
@@ -21,6 +22,7 @@ const TripDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mapRegion, setMapRegion] = useState(null);
+  const [updating, setUpdating] = useState(false);
   
   const route = useRoute();
   const navigation = useNavigation();
@@ -33,8 +35,7 @@ const TripDetailScreen = () => {
       setError(null);
       
       try {
-        const response = await apiClient.get(`/api/tracks/${trackId}`);
-        const trackData = response.data;
+        const trackData = await getTrackById(trackId);
         setTrack(trackData);
         
         // Calcola la regione della mappa per mostrare l'intero percorso
@@ -141,6 +142,59 @@ const TripDetailScreen = () => {
           <Text style={styles.statValue}>{formatSpeed(track.maxSpeed)}</Text>
           <Text style={styles.statLabel}>Vel. Max (km/h)</Text>
         </View>
+      </View>
+    );
+  };
+  
+  // Toggle public/private status
+  const togglePublicStatus = async () => {
+    if (!track) return;
+    
+    setUpdating(true);
+    try {
+      const updatedTrack = await updateTrack(trackId, { 
+        isPublic: !track.isPublic 
+      });
+      
+      setTrack(updatedTrack);
+      Alert.alert(
+        'Success', 
+        `Track is now ${updatedTrack.isPublic ? 'public' : 'private'}.`
+      );
+    } catch (err) {
+      console.error('Error updating track visibility:', err);
+      Alert.alert('Error', 'Failed to update track visibility. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+  
+  // Add public/private toggle button in the info section
+  const renderPublicToggle = () => {
+    if (!track) return null;
+    
+    return (
+      <View style={styles.shareContainer}>
+        <Text style={styles.shareText}>
+          This track is currently <Text style={styles.visibilityText}>{track.isPublic ? 'public' : 'private'}</Text>
+        </Text>
+        <TouchableOpacity 
+          style={[
+            styles.shareButton, 
+            track.isPublic ? styles.makePrivateButton : styles.makePublicButton
+          ]}
+          onPress={togglePublicStatus}
+          disabled={updating}
+        >
+          <Ionicons 
+            name={track.isPublic ? 'eye-off' : 'eye'} 
+            size={18} 
+            color="white" 
+          />
+          <Text style={styles.shareButtonText}>
+            {updating ? 'Updating...' : (track.isPublic ? 'Make Private' : 'Make Public')}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -277,6 +331,9 @@ const TripDetailScreen = () => {
           </View>
         )}
       </View>
+      
+      {/* Add this after the info container */}
+      {renderPublicToggle()}
     </ScrollView>
   );
 };
@@ -424,6 +481,43 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 14,
     color: '#0277bd',
+  },
+  shareContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginHorizontal: 12,
+    alignItems: 'center',
+  },
+  shareText: {
+    fontSize: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  visibilityText: {
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    width: 200,
+  },
+  makePublicButton: {
+    backgroundColor: '#4CAF50',
+  },
+  makePrivateButton: {
+    backgroundColor: '#FF5722',
+  },
+  shareButtonText: {
+    color: 'white',
+    marginLeft: 8,
+    fontWeight: 'bold',
   },
 });
 
