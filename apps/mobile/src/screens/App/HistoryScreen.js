@@ -140,7 +140,7 @@ const HistoryScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
+  <View style={styles.container}>
             {error && <Text style={styles.errorText}>{error}</Text>}
             
             <FlatList
@@ -160,8 +160,8 @@ const HistoryScreen = () => {
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.3}
             />
-        </View>
-    );
+  </View>
+);
 };
 
 const styles = StyleSheet.create({
