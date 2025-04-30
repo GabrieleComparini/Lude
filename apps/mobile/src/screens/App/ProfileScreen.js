@@ -245,7 +245,7 @@ const ProfileScreen = () => {
       {/* Profile Header */}
       <View style={styles.header}>
         <View style={styles.profileInfo}>
-          <View style={styles.avatar}>
+        <View style={styles.avatar}>
             <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>
           </View>
           
@@ -300,7 +300,7 @@ const ProfileScreen = () => {
               <Text style={styles.addVehicleText}>Aggiungi un veicolo</Text>
             </TouchableOpacity>
           )}
-        </View>
+    </View>
       )}
       
       {/* Statistics Section */}
@@ -325,8 +325,8 @@ const ProfileScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+    container: {
+        flex: 1,
     backgroundColor: '#121212',
   },
   header: {
@@ -337,18 +337,18 @@ const styles = StyleSheet.create({
   },
   profileInfo: {
     flexDirection: 'row',
-    alignItems: 'center',
+        alignItems: 'center',
     marginBottom: 16,
-  },
-  avatar: {
+    },
+    avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
     backgroundColor: '#2c2c2e',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarText: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#fff',
@@ -358,10 +358,10 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 20,
-    fontWeight: 'bold',
+        fontWeight: 'bold',
     color: '#fff',
-  },
-  username: {
+    },
+    username: {
     fontSize: 16,
     color: '#999',
   },
@@ -385,15 +385,15 @@ const styles = StyleSheet.create({
   },
   followCount: {
     fontSize: 18,
-    fontWeight: 'bold',
+        fontWeight: 'bold',
     color: '#fff',
   },
   followLabel: {
     fontSize: 14,
     color: '#999',
-  },
+    },
   sectionTitle: {
-    fontSize: 18,
+        fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 16,
@@ -556,10 +556,10 @@ const styles = StyleSheet.create({
   },
   addVehicleText: {
     color: '#007AFF',
-    fontSize: 16,
+        fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
-  },
+    },
 });
 
 export default ProfileScreen; 

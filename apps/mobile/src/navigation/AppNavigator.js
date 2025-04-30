@@ -124,7 +124,7 @@ function ProfileStackNavigator() {
             title: 'Veicoli',
             headerShown: false
           }}
-      />
+       />
     </ProfileStack.Navigator>
   );
 }
@@ -166,7 +166,7 @@ const AppNavigator = () => {
             <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
           ),
         }}
-      />
+        />
       <Tab.Screen 
         name="ExploreTab" 
         component={ExploreStackNavigator} 
@@ -182,7 +182,7 @@ const AppNavigator = () => {
         component={ProfileStackNavigator} 
         options={{
           title: 'Profile',
-          tabBarIcon: ({ focused, color, size }) => (
+           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
         }}

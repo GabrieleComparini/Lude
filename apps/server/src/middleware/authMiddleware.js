@@ -1,5 +1,6 @@
 const admin = require('../config/firebaseAdmin');
 const User = require('../models/User');
+const AppError = require('../utils/AppError'); // Import AppError
 
 // Utility function to handle async route handlers
 const asyncHandler = fn => (req, res, next) =>

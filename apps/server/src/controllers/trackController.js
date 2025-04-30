@@ -192,7 +192,7 @@ const getPublicTracks = asyncHandler(async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
-    
+
     // Filtro di base per i tracciati pubblici
     let query = { isPublic: true };
     
@@ -220,19 +220,19 @@ const getPublicTracks = asyncHandler(async (req, res, next) => {
     try {
         const totalTracks = await Track.countDocuments(query);
         const tracks = await Track.find(query)
-                                  .sort({ startTime: -1 })
-                                  .skip(skip)
-                                  .limit(limit)
-                                  .select('-route')
-                                  .populate('userId', 'username name profileImage')
-                                  .populate('vehicleId', 'make model nickname');
+                              .sort({ startTime: -1 })
+                              .skip(skip)
+                              .limit(limit)
+                              .select('-route')
+                              .populate('userId', 'username name profileImage')
+                              .populate('vehicleId', 'make model nickname');
 
-        res.status(200).json({
-            currentPage: page,
-            totalPages: Math.ceil(totalTracks / limit),
-            totalTracks,
-            tracks
-        });
+     res.status(200).json({
+        currentPage: page,
+        totalPages: Math.ceil(totalTracks / limit),
+        totalTracks,
+        tracks
+    });
     } catch (err) {
         console.error('Error fetching public tracks:', err);
         return next(new AppError('Failed to fetch tracks', 500));
