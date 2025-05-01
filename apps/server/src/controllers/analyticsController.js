@@ -15,7 +15,7 @@ const getSummaryStats = asyncHandler(async (req, res, next) => {
         
         // Get total distance and duration from tracks
         const tracksAggregation = await Track.aggregate([
-            { $match: { userId: mongoose.Types.ObjectId.isValid(userId) ? mongoose.Types.ObjectId(userId) : userId } },
+            { $match: { userId: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId } },
             { $group: {
                 _id: null,
                 totalDistance: { $sum: '$distance' },
