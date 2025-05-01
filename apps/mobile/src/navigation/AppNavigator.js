@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Import Stack Navigator
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity, View, Text } from 'react-native';
+import { theme } from '../styles/theme';
 
 // Import Screens
 import MapScreen from '../screens/App/MapScreen';
@@ -15,11 +16,14 @@ import SaveTrackScreen from '../screens/App/SaveTrackScreen';
 import TripDetailScreen from '../screens/App/TripDetailScreen';
 import CommentsScreen from '../screens/App/CommentsScreen';
 import PublicProfileScreen from '../screens/App/PublicProfileScreen';
+import ConnectionsScreen from '../screens/App/ConnectionsScreen';
+// Gamification Screens
+import AchievementsScreen from '../screens/App/Gamification/AchievementsScreen';
+import LeaderboardsScreen from '../screens/App/Gamification/LeaderboardsScreen';
+import ChallengesScreen from '../screens/App/Gamification/ChallengesScreen';
 // Import Vehicle screens
 import VehicleListScreen from '../screens/App/VehicleListScreen';
-import VehicleDetailScreen from '../screens/App/VehicleDetailScreen';
-import AddVehicleScreen from '../screens/App/AddVehicleScreen';
-import EditVehicleScreen from '../screens/App/EditVehicleScreen';
+import AddEditVehicleScreen from '../screens/App/VehicleForms/AddEditVehicleScreen';
 
 // Placeholder removing
 // const PublicProfileScreen = () => <ProfileScreen isPublic={true} />;
@@ -40,11 +44,11 @@ function MapStackNavigator() {
         screenOptions={({ navigation }) => ({
           ...AppNavigatorScreenOptions.stack,
           headerRight: () => (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
               style={{ marginRight: 10 }}
             >
-              <Ionicons name="settings-outline" size={24} color="#fff" />
+              <Ionicons name="settings-outline" size={24} color={theme.colors.white || '#fff'} />
             </TouchableOpacity>
           ),
         })}
@@ -55,22 +59,44 @@ function MapStackNavigator() {
           component={SaveTrackScreen} 
           options={{ title: 'Save Track' }}
       />
-      <MapStack.Screen 
-          name="Settings" 
-          component={SettingsScreen} 
+      {/* Settings stack accessible from Map header */}
+      <MapStack.Screen
+          name="Settings"
+          component={SettingsScreen}
           options={{ title: 'Settings' }}
       />
-      <MapStack.Screen 
-          name="Vehicles" 
-          component={VehicleStackNavigator} 
-          options={{ 
-            title: 'Veicoli',
+       {/* Gamification screens accessible from Settings */}
+      <MapStack.Screen
+          name="Achievements"
+          component={AchievementsScreen}
+          options={{ title: 'Obiettivi' }}
+      />
+      <MapStack.Screen
+          name="Leaderboards"
+          component={LeaderboardsScreen}
+          options={{ title: 'Classifiche' }}
+      />
+       <MapStack.Screen
+          name="Challenges"
+          component={ChallengesScreen}
+          options={{ title: 'Sfide' }}
+      />
+       {/* Vehicle stack accessible from Settings */}
+      <MapStack.Screen
+          name="Vehicles"
+          component={VehicleStackNavigator}
+          options={{
+            title: 'Garage',
             headerShown: false
           }}
       />
+      {/* Other screens accessible globally or through other flows */}
       <MapStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
       <MapStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
       <MapStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+      <MapStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
+      <MapStack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Modifica Profilo'}} />
+
     </MapStack.Navigator>
   );
 }
@@ -80,6 +106,7 @@ function SearchStackNavigator() {
     <SearchStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
       <SearchStack.Screen name="SearchUsers" component={SearchScreen} options={{ title: 'Cerca' }} />
       <SearchStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <SearchStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
       <SearchStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
       <SearchStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
     </SearchStack.Navigator>
@@ -101,10 +128,14 @@ function ExploreStackNavigator() {
 function VehicleStackNavigator() {
   return (
     <VehicleStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <VehicleStack.Screen name="VehicleList" component={VehicleListScreen} options={{ title: 'I Tuoi Veicoli' }} />
-      <VehicleStack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ title: 'Dettaglio Veicolo' }} />
-      <VehicleStack.Screen name="AddVehicle" component={AddVehicleScreen} options={{ title: 'Aggiungi Veicolo' }} />
-      <VehicleStack.Screen name="EditVehicle" component={EditVehicleScreen} options={{ title: 'Modifica Veicolo' }} />
+      <VehicleStack.Screen name="VehicleList" component={VehicleListScreen} options={{ title: 'Garage' }} />
+      <VehicleStack.Screen
+        name="AddEditVehicle"
+        component={AddEditVehicleScreen}
+        options={({ route }) => ({
+          title: route.params?.vehicleId ? 'Modifica Veicolo' : 'Aggiungi Veicolo',
+        })}
+      />
     </VehicleStack.Navigator>
   );
 }
@@ -113,15 +144,20 @@ function ProfileStackNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
       <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} options={{ title: 'Profilo' }} />
-      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Modifica Profilo' }}
+      />
+      <ProfileStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
       <ProfileStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
       <ProfileStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
       <ProfileStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
-      <ProfileStack.Screen 
+      <ProfileStack.Screen
           name="Vehicles" 
           component={VehicleStackNavigator} 
           options={{ 
-            title: 'Veicoli',
+            title: 'Garage',
             headerShown: false
           }}
        />

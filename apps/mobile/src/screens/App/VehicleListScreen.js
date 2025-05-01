@@ -117,12 +117,12 @@ const VehicleListScreen = () => {
   
   // Gestisce la navigazione verso la schermata di aggiunta veicolo
   const handleAddVehicle = () => {
-    navigation.navigate('AddVehicle');
+    navigation.navigate('AddEditVehicle');
   };
   
   // Gestisce la navigazione verso la schermata di modifica veicolo
   const handleEditVehicle = (vehicle) => {
-    navigation.navigate('EditVehicle', { vehicleId: vehicle._id });
+    navigation.navigate('AddEditVehicle', { vehicleId: vehicle._id });
   };
   
   // Renderizza il messaggio di lista vuota

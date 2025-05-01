@@ -1,7 +1,6 @@
     # Dependency directories
     node_modules/
     **/node_modules/
-    **/apps/admin/
 
     # Build output
     /dist
@@ -48,7 +47,6 @@
     apps/mobile/.expo/
     apps/mobile/web-build/
     apps/mobile/.idea/
-    apps/admin/src/
 
     # Next.js specific
     apps/web/.next/

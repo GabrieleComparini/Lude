@@ -7,7 +7,8 @@ import {
   ScrollView, 
   ActivityIndicator, 
   RefreshControl, 
-  Alert 
+  Alert,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import { getUserProfile, followUser, unfollowUser } from '../../api/services/use
 import { getUserTracks } from '../../api/services/trackService';
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
 import VehicleCard from '../../components/VehicleCard';
+import { theme } from '../../styles/theme';
 
 const HistoryItem = ({ track, onPress }) => {
   const formatDate = (dateString) => {
@@ -199,6 +201,13 @@ const PublicProfileScreen = () => {
     navigation.navigate('TripDetail', { trackId });
   };
 
+  const handleNavigateToConnections = (initialTab) => {
+    navigation.navigate('Connections', {
+        username: username, // Pass the viewed profile's username
+        initialTab: initialTab
+    });
+  };
+
   if (loadingProfile && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -234,50 +243,43 @@ const PublicProfileScreen = () => {
       {/* Intestazione Profilo */}
       <View style={styles.header}>
         <View style={styles.profileInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {profileData?.name ? profileData.name.charAt(0).toUpperCase() : username.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          
-          <View style={styles.nameContainer}>
+          <Image 
+            source={profileData?.profileImage ? { uri: profileData.profileImage } : require('../../assets/images/default_profile.png')}
+            style={styles.avatar}
+          />
+          <View style={styles.profileText}>
             <Text style={styles.name}>{profileData?.name || username}</Text>
             <Text style={styles.username}>@{username}</Text>
-            
             {profileData?.bio && (
               <Text style={styles.bio}>{profileData.bio}</Text>
             )}
           </View>
         </View>
         
+        <View style={styles.statsRow}>
+          <TouchableOpacity onPress={() => handleNavigateToConnections('following')} style={styles.statItem}>
+            <Text style={styles.statCount}>{profileData?.followingCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Following</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleNavigateToConnections('followers')} style={styles.statItem}>
+            <Text style={styles.statCount}>{profileData?.followersCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </TouchableOpacity>
+        </View>
+        
         <TouchableOpacity 
-          style={[
-            styles.followButton, 
-            isFollowing ? styles.followingButton : styles.notFollowingButton
-          ]}
+          style={[styles.followButton, isFollowing ? styles.unfollowButton : {}]} 
           onPress={handleFollowToggle}
           disabled={followLoading}
         >
           {followLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={isFollowing ? theme.colors.text : theme.colors.white} />
           ) : (
-            <Text style={styles.followButtonText}>
-              {isFollowing ? 'Segui già' : 'Segui'}
+            <Text style={[styles.followButtonText, isFollowing ? styles.unfollowButtonText : {}]}>
+              {isFollowing ? 'Seguito' : 'Segui'}
             </Text>
           )}
         </TouchableOpacity>
-        
-        <View style={styles.followStats}>
-          <View style={styles.followStat}>
-            <Text style={styles.followCount}>{profileData?.following || 0}</Text>
-            <Text style={styles.followLabel}>Following</Text>
-          </View>
-          
-          <View style={styles.followStat}>
-            <Text style={styles.followCount}>{profileData?.followers || 0}</Text>
-            <Text style={styles.followLabel}>Followers</Text>
-          </View>
-        </View>
       </View>
       
       {/* Sezione Veicolo Predefinito */}
@@ -337,13 +339,13 @@ const PublicProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: theme.colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
+    backgroundColor: theme.colors.background,
   },
   loadingSectionContainer: {
     padding: 20,
@@ -352,21 +354,22 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#999',
-    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontSize: 16,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#121212',
+    backgroundColor: theme.colors.background,
   },
   errorText: {
-    color: '#FF3B30',
+    fontSize: 18,
+    color: theme.colors.error,
     textAlign: 'center',
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: 15,
+    marginBottom: 20,
   },
   errorMessageContainer: {
     padding: 10,
@@ -381,97 +384,109 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   retryButton: {
-    marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: '#007AFF',
-    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
   },
   retryText: {
-    color: '#fff',
+    color: theme.colors.white,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   header: {
-    padding: 16,
-    backgroundColor: '#1c1c1e',
+    backgroundColor: theme.colors.surface,
+    padding: 20,
+    paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: theme.colors.border,
   },
   profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 15,
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: theme.colors.primary,
+    marginRight: 15,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  nameContainer: {
-    marginLeft: 16,
+  profileText: {
     flex: 1,
   },
   name: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.text,
   },
   username: {
     fontSize: 16,
-    color: '#999',
-    marginBottom: 4,
+    color: theme.colors.textSecondary,
+    marginBottom: 5,
   },
   bio: {
     fontSize: 14,
-    color: '#ccc',
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
-  followButton: {
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  followingButton: {
-    backgroundColor: '#444',
-  },
-  notFollowingButton: {
-    backgroundColor: '#007AFF',
-  },
-  followButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  followStats: {
+  statsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: 15,
   },
-  followStat: {
-    marginRight: 24,
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
-  followCount: {
+  statCount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.text,
   },
-  followLabel: {
+  statLabel: {
     fontSize: 14,
-    color: '#999',
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  followButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 0,
+    height: 40,
+    justifyContent: 'center',
+  },
+  followButtonText: {
+    color: theme.colors.white,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  unfollowButton: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  unfollowButtonText: {
+    color: theme.colors.text,
+  },
+  vehicleContainer: {
+    padding: 16,
+    backgroundColor: '#1c1c1e',
+    marginTop: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.text,
+    marginBottom: 15,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -486,73 +501,68 @@ const styles = StyleSheet.create({
   },
   historyContainer: {
     padding: 16,
-    backgroundColor: '#1c1c1e',
-    marginTop: 12,
-    marginBottom: 12,
+    backgroundColor: theme.colors.background,
   },
   statsContainer: {
     padding: 16,
-    backgroundColor: '#1c1c1e',
-    marginTop: 12,
+    backgroundColor: theme.colors.background,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 10,
   },
   statCard: {
-    width: '48%',
-    backgroundColor: '#2c2c2e',
-    borderRadius: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
     padding: 16,
-    marginBottom: 12,
+    width: '48%',
+    marginBottom: 10,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#999',
+    color: theme.colors.text,
+    marginBottom: 5,
   },
   historyItem: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
   },
   historyInfo: {
     flex: 1,
+    marginRight: 10,
   },
   historyTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
+    color: theme.colors.text,
+    marginBottom: 5,
   },
   historyDate: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 12,
+    color: theme.colors.textSecondary,
     marginBottom: 8,
   },
   historyStats: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   historyStat: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 15,
+    marginBottom: 5,
   },
   historyStatText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 12,
+    color: theme.colors.text,
     marginLeft: 4,
   },
   emptyHistory: {
@@ -560,14 +570,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyHistoryText: {
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
   },
-  vehicleContainer: {
-    padding: 16,
-    backgroundColor: '#1c1c1e',
-    marginTop: 12,
+  vehicleSection: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
   },
 });
 

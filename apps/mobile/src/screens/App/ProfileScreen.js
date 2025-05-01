@@ -8,13 +8,15 @@ import { getUserTracks } from '../../api/services/trackService';
 import { getDefaultVehicle } from '../../api/services/vehicleService';
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
 import VehicleCard from '../../components/VehicleCard';
+import SpeedDistributionChart from '../../components/charts/SpeedDistributionChart';
+import { theme } from '../../styles/theme';
 
 // Placeholder components for section content
 const StatsSection = ({ userStats, loading }) => {
   if (loading) {
     return (
       <View style={[styles.statsContainer, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.loadingText}>Caricamento statistiche...</Text>
       </View>
     );
@@ -46,13 +48,7 @@ const StatsSection = ({ userStats, loading }) => {
         </View>
       </View>
 
-      {/* Placeholder for speed distribution chart */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Distribuzione velocità</Text>
-        <View style={styles.chartPlaceholder}>
-          <Text style={styles.placeholderText}>Grafico distribuzione velocità</Text>
-        </View>
-      </View>
+      <SpeedDistributionChart />
     </View>
   );
 };
@@ -219,15 +215,19 @@ const ProfileScreen = () => {
     navigation.navigate('TripDetail', { trackId });
   };
 
-  const handleViewAllTracks = () => {
-    navigation.navigate('HistoryTab');
-  };
-  
   const handleVehiclePress = () => {
-    if (defaultVehicle) {
-      navigation.navigate('Vehicles', { screen: 'VehicleDetail', params: { vehicleId: defaultVehicle._id } });
+    navigation.navigate('Vehicles');
+  };
+
+  const handleNavigateToConnections = (initialTab) => {
+    if (user?.username) {
+        navigation.navigate('Connections', {
+            username: user.username, // Pass own username
+            initialTab: initialTab // 'followers' or 'following'
+        });
     } else {
-      navigation.navigate('Vehicles', { screen: 'VehicleList' });
+        console.warn("Cannot navigate to connections: username is missing.");
+        // Optionally show an alert to the user
     }
   };
 
@@ -245,31 +245,31 @@ const ProfileScreen = () => {
       {/* Profile Header */}
       <View style={styles.header}>
         <View style={styles.profileInfo}>
-        <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>
-          </View>
-          
-          <View style={styles.nameContainer}>
-            <Text style={styles.name}>{user?.name || 'User Name'}</Text>
+          <Image 
+            source={user?.profileImage ? { uri: user.profileImage } : require('../../assets/images/default_profile.png')}
+            style={styles.avatar}
+          />
+          <View style={styles.profileText}>
+            <Text style={styles.name}>{user?.name || user?.username || 'User Name'}</Text>
             <Text style={styles.username}>@{user?.username || 'username'}</Text>
+            {user?.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
           </View>
+        </View>
+        
+        <View style={styles.statsRow}>
+          <TouchableOpacity onPress={() => handleNavigateToConnections('following')} style={styles.statItem}>
+            <Text style={styles.statCount}>{user?.followingCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Following</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleNavigateToConnections('followers')} style={styles.statItem}>
+            <Text style={styles.statCount}>{user?.followersCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </TouchableOpacity>
         </View>
         
         <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
           <Text style={styles.editButtonText}>Modifica Profilo</Text>
         </TouchableOpacity>
-        
-        <View style={styles.followStats}>
-          <View style={styles.followStat}>
-            <Text style={styles.followCount}>{user?.following || 0}</Text>
-            <Text style={styles.followLabel}>Following</Text>
-          </View>
-          
-          <View style={styles.followStat}>
-            <Text style={styles.followCount}>{user?.followers || 0}</Text>
-            <Text style={styles.followLabel}>Followers</Text>
-          </View>
-        </View>
       </View>
       
       {/* Sezione Veicolo Predefinito */}
@@ -294,13 +294,13 @@ const ProfileScreen = () => {
           ) : (
             <TouchableOpacity 
               style={styles.addVehicleButton}
-              onPress={() => navigation.navigate('Vehicles', { screen: 'AddVehicle' })}
+              onPress={() => navigation.navigate('Vehicles', { screen: 'AddEditVehicle' })}
             >
               <Ionicons name="add-circle" size={28} color="#007AFF" />
               <Text style={styles.addVehicleText}>Aggiungi un veicolo</Text>
             </TouchableOpacity>
           )}
-    </View>
+        </View>
       )}
       
       {/* Statistics Section */}
@@ -313,13 +313,13 @@ const ProfileScreen = () => {
         loading={loadingTracks} 
       />
       
-      {/* View All Tracks Button */}
-      {userTracks.length > 0 && (
-        <TouchableOpacity style={styles.viewAllButton} onPress={handleViewAllTracks}>
-          <Text style={styles.viewAllText}>Vedi tutti i tracciati</Text>
-          <Ionicons name="arrow-forward" size={16} color="#007AFF" />
-        </TouchableOpacity>
-      )}
+      {/* Error Display */}
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
+      {/* Example Logout Button */}
+      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <Text style={styles.logoutButtonText}>Logout</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -327,201 +327,129 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 16,
-    backgroundColor: '#1c1c1e',
+    padding: 20,
+    paddingBottom: 15,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: theme.colors.border,
   },
   profileInfo: {
     flexDirection: 'row',
         alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 15,
     },
     avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#2c2c2e',
-        justifyContent: 'center',
-        alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+        marginRight: 15,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
     },
-    avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  nameContainer: {
-    marginLeft: 16,
+    profileText: {
+    flex: 1,
   },
   name: {
-    fontSize: 20,
+    fontSize: 22,
         fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.text,
     },
     username: {
     fontSize: 16,
-    color: '#999',
+    color: theme.colors.textSecondary,
+    marginBottom: 5,
+  },
+  bio: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+      marginTop: 4,
   },
   editButton: {
-    backgroundColor: '#333',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignSelf: 'flex-start',
-    marginBottom: 16,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 10,
   },
   editButtonText: {
-    color: '#fff',
+    color: theme.colors.white,
     fontWeight: 'bold',
+    fontSize: 16,
   },
-  followStats: {
+  statsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+    marginTop: 5,
   },
-  followStat: {
-    marginRight: 24,
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
-  followCount: {
+  statCount: {
     fontSize: 18,
         fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.text,
   },
-  followLabel: {
+  statLabel: {
     fontSize: 14,
-    color: '#999',
-    },
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
   sectionTitle: {
         fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
+    color: theme.colors.text,
+    marginBottom: 15,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   trackCount: {
-    fontSize: 16,
-    color: '#999',
+    fontSize: 14,
+    color: theme.colors.textSecondary,
     fontWeight: 'bold',
   },
   // Stats section styles
   statsContainer: {
-    padding: 16,
-    backgroundColor: '#1c1c1e',
-    marginTop: 12,
-    marginBottom: 12,
+    padding: 15,
+    backgroundColor: theme.colors.background,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 10,
   },
   statCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    padding: 15,
     width: '48%',
-    backgroundColor: '#2c2c2e',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#999',
-  },
-  chartContainer: {
-    backgroundColor: '#2c2c2e',
-    borderRadius: 12,
-    padding: 16,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  chartPlaceholder: {
-    height: 150,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#444',
-    borderRadius: 8,
-    borderStyle: 'dashed',
-  },
-  placeholderText: {
-    color: '#666',
-  },
-  // History section styles
-  historyContainer: {
-    padding: 16,
-    backgroundColor: '#1c1c1e',
-    marginBottom: 12,
-  },
-  historyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
-  },
-  historyInfo: {
-    flex: 1,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  historyDate: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 8,
-  },
-  historyStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  historyStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  historyStatText: {
-    fontSize: 14,
-    color: '#999',
-    marginLeft: 4,
-  },
-  emptyHistory: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyHistoryText: {
-    color: '#666',
-    fontSize: 16,
+    color: theme.colors.text,
+    marginBottom: 5,
   },
   loadingContainer: {
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    minHeight: 200,
+    justifyContent: 'center',
+    minHeight: 100,
   },
   loadingText: {
     marginTop: 10,
-    color: '#999',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   viewAllButton: {
@@ -541,25 +469,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   vehicleContainer: {
-    padding: 16,
-    backgroundColor: '#1c1c1e',
+    padding: 15,
+    backgroundColor: theme.colors.background,
     marginTop: 12,
   },
   addVehicleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2c2c2e',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
+    backgroundColor: theme.colors.surface,
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 10,
   },
   addVehicleText: {
-    color: '#007AFF',
+    color: theme.colors.primary,
         fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
     },
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  logoutButton: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    margin: 15,
+  },
+  logoutButtonText: {
+    color: theme.colors.error,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
 
 export default ProfileScreen; 

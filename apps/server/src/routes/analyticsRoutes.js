@@ -4,6 +4,8 @@ const {
     getSummaryStats,
     getTrends,
     getHeatmapData,
+    getSpeedDistribution,
+    getStatsByVehicle,
     exportData
 } = require('../controllers/analyticsController');
 const { protect, ensureSynced } = require('../middleware/authMiddleware');
@@ -19,6 +21,12 @@ router.get('/trends', getTrends);
 
 // GET /api/analytics/heatmap - Get heatmap data points
 router.get('/heatmap', getHeatmapData);
+
+// GET /api/analytics/speed-distribution - Get speed distribution data
+router.get('/speed-distribution', getSpeedDistribution);
+
+// GET /api/analytics/vehicles - Get statistics grouped by vehicle
+router.get('/vehicles', getStatsByVehicle);
 
 // GET /api/analytics/export - Export user data as JSON
 router.get('/export', exportData);

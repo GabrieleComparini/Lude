@@ -18,6 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../../api/client'; // Import apiClient
+import { updateUserProfile } from '../../api/services/userService'; // Assuming this function exists/will exist
+import { theme } from '../../styles/theme'; // Corrected path
 
 const EditProfileScreen = () => {
     const { user, setUser } = useAuth(); // Get user and a way to update it locally
@@ -30,6 +32,7 @@ const EditProfileScreen = () => {
     const [newImageUri, setNewImageUri] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     // Update state if user context changes (e.g., after initial load)
     useEffect(() => {
@@ -64,6 +67,7 @@ const EditProfileScreen = () => {
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 setNewImageUri(result.assets[0].uri);
+                setProfileImage(result.assets[0].uri);
             }
         } catch (err) {
             console.error('Error picking image:', err);
@@ -74,6 +78,7 @@ const EditProfileScreen = () => {
     const handleUpdate = async () => {
         setLoading(true);
         setError(null);
+        setUploadingImage(true);
 
         try {
             let formData = null;
@@ -105,6 +110,7 @@ const EditProfileScreen = () => {
 
         if (Object.keys(updateData).length === 0) {
             setLoading(false);
+            setUploadingImage(false);
             Alert.alert("No Changes", "You haven't made any changes.");
             return;
         }
@@ -113,6 +119,7 @@ const EditProfileScreen = () => {
         if (updateData.username && !/^[a-zA-Z0-9_]{3,30}$/.test(updateData.username)){
              setError("Invalid username format (3-30 chars, letters, numbers, underscore).");
              setLoading(false);
+             setUploadingImage(false);
              return;
         }
             }
@@ -135,6 +142,7 @@ const EditProfileScreen = () => {
             setError(err.response?.data?.message || 'Failed to update profile. Please try again.');
         } finally {
             setLoading(false);
+            setUploadingImage(false);
         }
     };
 
@@ -197,6 +205,13 @@ const EditProfileScreen = () => {
                     placeholderTextColor="#888"
                     editable={!loading}
                 />
+
+                {uploadingImage && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                        <Text style={styles.loadingText}>Caricamento immagine...</Text>
+                    </View>
+                )}
 
                 {loading ? (
                     <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
@@ -307,7 +322,26 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
-    }
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject, // Cover the whole screen? Or just the button area? Adjust as needed.
+        // For covering just the container part:
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        // End container cover part
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10, // Make sure it's above other elements
+    },
+    loadingText: {
+        marginTop: 10,
+        color: theme.colors.white,
+        fontSize: 16,
+    },
 });
 
 export default EditProfileScreen; 

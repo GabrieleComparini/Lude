@@ -315,6 +315,43 @@ const deleteTrack = asyncHandler(async (req, res, next) => {
     res.status(200).json({ message: 'Track deleted successfully' });
 });
 
+// @desc    Update track visibility (public/private)
+// @route   PATCH /api/tracks/:id/visibility
+// @access  Private (Synced user required, must own track)
+const updateTrackVisibility = asyncHandler(async (req, res, next) => {
+    const trackId = req.params.id;
+    const { isPublic } = req.body;
+    
+    if (typeof isPublic !== 'boolean') {
+        return next(new AppError('isPublic field must be a boolean value', 400));
+    }
+    
+    // Find the track
+    const track = await Track.findById(trackId);
+    
+    if (!track) {
+        return next(new AppError('Track not found', 404));
+    }
+    
+    // Ensure user owns the track
+    if (track.userId.toString() !== req.user._id.toString()) {
+        return next(new AppError('Not authorized to update this track', 403));
+    }
+    
+    // Update the track visibility
+    track.isPublic = isPublic;
+    await track.save();
+    
+    res.status(200).json({
+        success: true,
+        message: `Track is now ${isPublic ? 'public' : 'private'}`,
+        track: {
+            _id: track._id,
+            isPublic: track.isPublic
+        }
+    });
+});
+
 // --- Helper Functions ---
 
 // Calculate distance between two lat/lng points using Haversine formula
@@ -340,5 +377,7 @@ module.exports = {
     getUserTracks,
     getPublicTracks,
     updateTrack,
-    deleteTrack
+    deleteTrack,
+    updateTrackVisibility,
+    calculateDistance
 }; 

@@ -5,7 +5,8 @@ const {
     getUserTracks,
     getPublicTracks,
     updateTrack,
-    deleteTrack
+    deleteTrack,
+    updateTrackVisibility
 } = require('../controllers/trackController');
 const { protect, ensureSynced } = require('../middleware/authMiddleware');
 const { handleReaction } = require('../controllers/reactionController');
@@ -35,6 +36,9 @@ router.post('/:trackId/react', protect, ensureSynced, handleReaction);
 
 // Update track details (description, tags, isPublic)
 router.put('/:id', protect, ensureSynced, updateTrack);
+
+// Update track visibility (public/private)
+router.patch('/:id/visibility', protect, ensureSynced, updateTrackVisibility);
 
 // Delete a track
 router.delete('/:id', protect, ensureSynced, deleteTrack);

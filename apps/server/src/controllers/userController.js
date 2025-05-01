@@ -3,6 +3,7 @@ const { asyncHandler, protect, ensureSynced } = require('../middleware/authMiddl
 const AppError = require('../utils/AppError'); // Assuming AppError utility exists for custom errors
 const cloudinary = require('../config/cloudinary'); // Need cloudinary to potentially delete old images
 const { checkAchievements } = require('../services/achievementService'); // Import achievement service
+const mongoose = require('mongoose');
 
 // @desc    Get logged-in user profile
 // @route   GET /api/users/profile
@@ -144,112 +145,228 @@ const getPublicUserProfile = asyncHandler(async (req, res, next) => {
     res.status(200).json(user);
 });
 
-// @desc    Search users by username or name
+// @desc    Search for users by username, name, or other criteria
 // @route   GET /api/users/search
-// @access  Private (Logged-in user required)
+// @access  Private
 const searchUsers = asyncHandler(async (req, res, next) => {
+    // Get the search query
     const query = req.query.q;
-    if (!query || query.trim().length < 2) { // Require at least 2 characters
-        return res.status(400).json({ message: 'Search query must be at least 2 characters long' });
+    
+    // Ensure a minimum length for search query to avoid very broad searches
+    if (!query || query.length < 2) {
+        return next(new AppError('Search query must be at least 2 characters long', 400));
     }
-
-    const searchTerm = new RegExp(query, 'i'); // Case-insensitive search
-
-    const users = await User.find({
+    
+    // Build the search conditions
+    // Search by username, name, or other relevant fields
+    const searchConditions = {
         $or: [
-            { username: searchTerm },
-            { name: searchTerm }
+            { username: { $regex: query, $options: 'i' } }, // Case-insensitive regex match
+            { name: { $regex: query, $options: 'i' } }
         ]
-    })
-    .limit(20) // Limit results
-    .select('username name profileImage'); // Select minimal info for search results
-
-    res.status(200).json(users);
+    };
+    
+    // Add exclusion for the current user
+    if (req.user) {
+        searchConditions._id = { $ne: req.user._id };
+    }
+    
+    // Get pagination params
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Execute the search
+    const totalUsers = await User.countDocuments(searchConditions);
+    const users = await User.find(searchConditions)
+        .select('username name profileImage bio statistics')
+        .skip(skip)
+        .limit(limit)
+        .sort({ username: 1 });
+    
+    // Add follow status if user is logged in
+    if (req.user) {
+        const currentUser = await User.findById(req.user._id).select('connections');
+        const userConnections = currentUser?.connections || [];
+        
+        // Map users to include isFollowing flag
+        const usersWithFollowStatus = users.map(user => {
+            const userObj = user.toObject();
+            userObj.isFollowing = userConnections.includes(user._id);
+            return userObj;
+        });
+        
+        return res.status(200).json({
+            currentPage: page,
+            totalPages: Math.ceil(totalUsers / limit),
+            totalUsers,
+            users: usersWithFollowStatus
+        });
+    }
+    
+    // Return users without follow status for non-logged-in users
+    res.status(200).json({
+        currentPage: page,
+        totalPages: Math.ceil(totalUsers / limit),
+        totalUsers,
+        users
+    });
 });
 
 // @desc    Follow a user
 // @route   POST /api/users/:id/follow
 // @access  Private (Synced user required)
 const followUser = asyncHandler(async (req, res, next) => {
-    const userToFollowId = req.params.id;
-    const currentUserId = req.user._id;
-
-    if (userToFollowId === currentUserId.toString()) {
+    const userId = req.user._id;
+    const targetUserId = req.params.id;
+    
+    // Validate target user ID
+    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+        return next(new AppError('Invalid user ID', 400));
+    }
+    
+    // Prevent following yourself
+    if (userId.toString() === targetUserId) {
         return next(new AppError('You cannot follow yourself', 400));
     }
-
-    // Check if user to follow exists
-    const userToFollow = await User.findById(userToFollowId);
-    if (!userToFollow) {
-        return next(new AppError('User to follow not found', 404));
+    
+    // Check if target user exists
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+        return next(new AppError('User not found', 404));
     }
-
-    // Add userToFollowId to currentUser's connections (if not already there)
-    // Add currentUserId to userToFollow's followers (if not already there)
-    const updateCurrentUser = User.findByIdAndUpdate(currentUserId, { $addToSet: { connections: userToFollowId } });
-    const updateUserToFollow = User.findByIdAndUpdate(userToFollowId, { $addToSet: { followers: currentUserId } });
-
-    // Wait for both updates to complete
-    await Promise.all([updateCurrentUser, updateUserToFollow]);
-
-    // --- Check for Achievements for the user who initiated the follow ---
-    // Trigger based on user update (e.g., connections count change)
-    checkAchievements('user_updated', { userId: currentUserId })
-        .catch(err => {
-            console.error(`[AchievementCheck] Error initiating achievement check for user ${currentUserId} after following ${userToFollowId}:`, err);
-        });
-    // We could potentially also check achievements for userToFollow if there are follower-based achievements
-
-    res.status(200).json({ message: `Successfully followed ${userToFollow.username}` });
+    
+    // Get current user
+    const currentUser = await User.findById(userId);
+    if (!currentUser) {
+        return next(new AppError('Current user not found', 404));
+    }
+    
+    // Check if already following
+    if (currentUser.connections.includes(targetUserId)) {
+        return next(new AppError('You are already following this user', 400));
+    }
+    
+    // Add to connections (following)
+    currentUser.connections.push(targetUserId);
+    await currentUser.save();
+    
+    // Increment follower count for target user
+    targetUser.followerCount = (targetUser.followerCount || 0) + 1;
+    await targetUser.save();
+    
+    res.status(200).json({
+        success: true,
+        message: `You are now following ${targetUser.username}`,
+        followingCount: currentUser.connections.length
+    });
 });
 
 // @desc    Unfollow a user
 // @route   DELETE /api/users/:id/follow
 // @access  Private (Synced user required)
 const unfollowUser = asyncHandler(async (req, res, next) => {
-    const userToUnfollowId = req.params.id;
-    const currentUserId = req.user._id;
-
-     // Check if user to unfollow exists (optional, but good practice)
-    const userToUnfollow = await User.findById(userToUnfollowId);
-    if (!userToUnfollow) {
-        return next(new AppError('User to unfollow not found', 404));
+    const userId = req.user._id;
+    const targetUserId = req.params.id;
+    
+    // Validate target user ID
+    if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
+        return next(new AppError('Invalid user ID', 400));
     }
-
-    // Remove userToUnfollowId from currentUser's connections
-    // Remove currentUserId from userToUnfollow's followers
-    await User.findByIdAndUpdate(currentUserId, { $pull: { connections: userToUnfollowId } });
-    await User.findByIdAndUpdate(userToUnfollowId, { $pull: { followers: currentUserId } });
-
-    res.status(200).json({ message: `Successfully unfollowed ${userToUnfollow.username}` });
+    
+    // Get current user
+    const currentUser = await User.findById(userId);
+    if (!currentUser) {
+        return next(new AppError('Current user not found', 404));
+    }
+    
+    // Check if actually following
+    if (!currentUser.connections.includes(targetUserId)) {
+        return next(new AppError('You are not following this user', 400));
+    }
+    
+    // Remove from connections (following)
+    currentUser.connections = currentUser.connections.filter(
+        id => id.toString() !== targetUserId
+    );
+    await currentUser.save();
+    
+    // Decrement follower count for target user
+    const targetUser = await User.findById(targetUserId);
+    if (targetUser) {
+        targetUser.followerCount = Math.max((targetUser.followerCount || 0) - 1, 0);
+        await targetUser.save();
+    }
+    
+    res.status(200).json({
+        success: true,
+        message: `You have unfollowed ${targetUser ? targetUser.username : 'the user'}`,
+        followingCount: currentUser.connections.length
+    });
 });
 
-// @desc    Get users the current user is following
+// @desc    Get user connections (following)
 // @route   GET /api/users/connections
 // @access  Private (Synced user required)
 const getConnections = asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.user._id)
-                           .populate('connections', 'username name profileImage')
-                           .select('connections');
-    if (!user) {
+    const userId = req.user._id;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Get current user with connections
+    const currentUser = await User.findById(userId).select('connections');
+    if (!currentUser) {
         return next(new AppError('User not found', 404));
     }
-    res.status(200).json(user.connections);
+    
+    const connectionIds = currentUser.connections || [];
+    
+    // Get connection users
+    const totalConnections = connectionIds.length;
+    const connections = await User.find({
+        _id: { $in: connectionIds }
+    })
+    .select('username name profileImage bio')
+    .skip(skip)
+    .limit(limit);
+    
+    res.status(200).json({
+        currentPage: page,
+        totalPages: Math.ceil(totalConnections / limit),
+        totalConnections,
+        connections
+    });
 });
 
-// @desc    Get users following the current user
+// @desc    Get user followers
 // @route   GET /api/users/followers
 // @access  Private (Synced user required)
 const getFollowers = asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.user._id)
-                           .populate('followers', 'username name profileImage')
-                           .select('followers');
-     if (!user) {
-        return next(new AppError('User not found', 404));
-    }
-    res.status(200).json(user.followers);
+    const userId = req.user._id;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+    
+    // Find users who have current user in their connections
+    const totalFollowers = await User.countDocuments({
+        connections: userId
+    });
+    
+    const followers = await User.find({
+        connections: userId
+    })
+    .select('username name profileImage bio')
+    .skip(skip)
+    .limit(limit);
+    
+    res.status(200).json({
+        currentPage: page,
+        totalPages: Math.ceil(totalFollowers / limit),
+        totalFollowers,
+        followers
+    });
 });
-
 
 module.exports = {
     getUserProfile,
