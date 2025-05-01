@@ -26,8 +26,20 @@ const SearchScreen = () => {
   const handleSearch = async (query) => {
     setSearchQuery(query);
     
+    // Clear results immediately if query is empty
     if (query.trim() === '') {
       setSearchResults([]);
+      setError(null); // Also clear previous errors
+      setIsLoading(false); // Ensure loading is stopped
+      return;
+    }
+    
+    // Require minimum length (e.g., 2 characters) before searching
+    if (query.trim().length < 2) {
+      setSearchResults([]); // Clear results if query is too short
+      setError(null); // Clear errors
+      // Optional: Set an error message like setError('Inserisci almeno 2 caratteri per cercare.')
+      setIsLoading(false); // Stop loading if previously started by a longer query
       return;
     }
     
@@ -35,8 +47,32 @@ const SearchScreen = () => {
     setError(null);
     
     try {
-      const results = await searchUsers(query);
-      setSearchResults(results);
+      const response = await searchUsers(query);
+      console.log('Search results structure:', JSON.stringify(response));
+      
+      // Handle different response formats
+      let usersArray = [];
+      if (Array.isArray(response)) {
+        usersArray = response;
+      } else if (response && Array.isArray(response.data)) {
+        usersArray = response.data;
+      } else if (response && Array.isArray(response.users)) {
+        usersArray = response.users;
+      } else if (response && typeof response === 'object') {
+        // If it's an object but not in expected format, try to extract array
+        console.log('Unexpected response format, attempting to extract users');
+        const possibleArrays = Object.values(response).filter(val => Array.isArray(val));
+        if (possibleArrays.length > 0) {
+          usersArray = possibleArrays[0];
+        }
+      }
+      
+      console.log('Processed users array:', usersArray.length, 'users found');
+      setSearchResults(usersArray);
+      
+      if (usersArray.length === 0) {
+        console.log('No users found in the response');
+      }
     } catch (err) {
       console.error('Search error:', err);
       setError('Si è verificato un errore durante la ricerca. Riprova più tardi.');
@@ -98,9 +134,13 @@ const SearchScreen = () => {
         <FlatList
           data={searchResults}
           renderItem={renderSearchItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item._id || item.id || item.username}
           contentContainerStyle={styles.listContainer}
         />
+      ) : searchQuery.length > 0 && searchQuery.length < 2 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>Inserisci almeno 2 caratteri</Text>
+        </View>
       ) : searchQuery.length > 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>Nessun utente trovato</Text>
