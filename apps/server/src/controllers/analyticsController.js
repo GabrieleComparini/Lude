@@ -9,50 +9,54 @@ const mongoose = require('mongoose');
 // @route   GET /api/analytics/summary
 // @access  Private (Synced user required)
 const getSummaryStats = asyncHandler(async (req, res, next) => {
-    // req.user is guaranteed by ensureSynced middleware
-    // Ensure statistics are populated if they are virtuals or need calculation
-    const user = await User.findById(req.user._id).select('statistics');
-    if (!user) {
-        return next(new AppError('User not found', 404));
+    try {
+        // req.user is guaranteed by ensureSynced middleware
+        const userId = req.user._id;
+        
+        // Get total distance and duration from tracks
+        const tracksAggregation = await Track.aggregate([
+            { $match: { userId: mongoose.Types.ObjectId.isValid(userId) ? mongoose.Types.ObjectId(userId) : userId } },
+            { $group: {
+                _id: null,
+                totalDistance: { $sum: '$distance' },
+                totalDuration: { $sum: '$duration' },
+                maxSpeed: { $max: '$maxSpeed' },
+                avgSpeed: { $avg: '$avgSpeed' },
+                trackCount: { $sum: 1 }
+            }}
+        ]);
+        
+        // Calculate stats
+        const stats = tracksAggregation.length > 0 ? tracksAggregation[0] : {
+            totalDistance: 0,
+            totalDuration: 0,
+            maxSpeed: 0,
+            avgSpeed: 0,
+            trackCount: 0
+        };
+        
+        // Convert distance from meters to km
+        stats.totalDistance = (stats.totalDistance || 0) / 1000;
+        
+        // Convert speed from m/s to km/h
+        stats.maxSpeed = (stats.maxSpeed || 0) * 3.6;
+        stats.avgSpeed = (stats.avgSpeed || 0) * 3.6;
+        
+        // Convert duration from seconds to hours and minutes
+        const hours = Math.floor((stats.totalDuration || 0) / 3600);
+        const minutes = Math.floor(((stats.totalDuration || 0) % 3600) / 60);
+        stats.formattedDuration = `${hours}h ${minutes}m`;
+        
+        // Make sure we delete _id field if it exists
+        if (stats._id !== undefined) {
+            delete stats._id;
+        }
+        
+        res.status(200).json(stats);
+    } catch (error) {
+        console.error('Error in getSummaryStats:', error);
+        return next(new AppError('Failed to fetch user statistics', 500));
     }
-    
-    // Get total distance and duration from tracks
-    const tracksAggregation = await Track.aggregate([
-        { $match: { userId: mongoose.Types.ObjectId(req.user._id) } },
-        { $group: {
-            _id: null,
-            totalDistance: { $sum: '$distance' },
-            totalDuration: { $sum: '$duration' },
-            maxSpeed: { $max: '$maxSpeed' },
-            avgSpeed: { $avg: '$avgSpeed' },
-            trackCount: { $sum: 1 }
-        }}
-    ]);
-    
-    // Calculate stats
-    const stats = tracksAggregation.length > 0 ? tracksAggregation[0] : {
-        totalDistance: 0,
-        totalDuration: 0,
-        maxSpeed: 0,
-        avgSpeed: 0,
-        trackCount: 0
-    };
-    
-    // Convert distance from meters to km
-    stats.totalDistance = stats.totalDistance / 1000;
-    
-    // Convert speed from m/s to km/h
-    stats.maxSpeed = stats.maxSpeed * 3.6;
-    stats.avgSpeed = stats.avgSpeed * 3.6;
-    
-    // Convert duration from seconds to hours and minutes
-    const hours = Math.floor(stats.totalDuration / 3600);
-    const minutes = Math.floor((stats.totalDuration % 3600) / 60);
-    stats.formattedDuration = `${hours}h ${minutes}m`;
-    
-    delete stats._id;
-    
-    res.status(200).json(stats);
 });
 
 // @desc    Get tracking trends over a period
