@@ -7,12 +7,19 @@ const {
     followUser,
     unfollowUser,
     getConnections,
-    getFollowers
+    getFollowers,
+    createUser,
+    getAllUsers
 } = require('../controllers/userController');
-const { protect, ensureSynced } = require('../middleware/authMiddleware');
+const { protect, ensureSynced, isAdmin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware'); // Import upload middleware
 
 const router = express.Router();
+
+// --- Admin Routes ---
+router.route('/')
+    .post(protect, ensureSynced, isAdmin, createUser)
+    .get(protect, ensureSynced, isAdmin, getAllUsers);
 
 // --- Protected Routes (Require logged-in, synced user) ---
 

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { asyncHandler } = require('../middleware/authMiddleware'); // Use asyncHandler for error handling
+const admin = require('firebase-admin'); // Import Firebase Admin SDK
 
 // @desc    Sync Firebase user with local DB (Handles login and initial registration)
 // @route   POST /api/auth/sync
@@ -96,6 +97,37 @@ const syncUser = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Admin login
+// @route   POST /api/auth/login
+// @access  Public
+const adminLogin = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
+    try {
+        // Check if the user exists with this email
+        const user = await User.findOne({ email });
+        
+        if (!user || user.role !== 'admin') {
+            return res.status(401).json({ message: 'Invalid credentials or not authorized as admin' });
+        }
+        
+        // Let Firebase handle the actual authentication
+        // The client will use Firebase directly, this endpoint only checks if the user is an admin
+        return res.status(200).json({ 
+            success: true,
+            message: 'Admin authentication successful'
+        });
+    } catch (error) {
+        console.error('Admin login error:', error);
+        return res.status(500).json({ message: 'Server error during login' });
+    }
+});
+
 module.exports = {
     syncUser,
+    adminLogin
 }; 

@@ -28,3 +28,7 @@ Thumbs.db
 
 # Service Account Keys (Important!)
 *.json 
+apps/admin/node_modules
+apps/admin/.next
+apps/admin/.env
+apps/admin/.env.local

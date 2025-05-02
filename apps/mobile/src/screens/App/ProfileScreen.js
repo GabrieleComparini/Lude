@@ -355,7 +355,7 @@ const ProfileScreen = () => {
               <Text style={styles.addVehicleText}>Aggiungi un veicolo</Text>
             </TouchableOpacity>
           )}
-        </View>
+    </View>
       )}
       
       {/* Statistics Section */}
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textSecondary,
     marginTop: 2,
-  },
+    },
   sectionTitle: {
         fontSize: 18,
     fontWeight: 'bold',
@@ -483,8 +483,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 10,
-  },
+        marginBottom: 10,
+    },
   statCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: 8,
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-  },
+    },
 });
 
 export default ProfileScreen; 

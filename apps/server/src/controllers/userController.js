@@ -4,6 +4,7 @@ const AppError = require('../utils/AppError'); // Assuming AppError utility exis
 const cloudinary = require('../config/cloudinary'); // Need cloudinary to potentially delete old images
 const { checkAchievements } = require('../services/achievementService'); // Import achievement service
 const mongoose = require('mongoose');
+const admin = require('firebase-admin'); // Import Firebase Admin for user creation
 
 // @desc    Get logged-in user profile
 // @route   GET /api/users/profile
@@ -156,7 +157,7 @@ const searchUsers = asyncHandler(async (req, res, next) => {
     if (!query || query.length < 2) {
         return next(new AppError('Search query must be at least 2 characters long', 400));
     }
-    
+
     // Build the search conditions
     // Search by username, name, or other relevant fields
     const searchConditions = {
@@ -229,13 +230,13 @@ const followUser = asyncHandler(async (req, res, next) => {
     if (userId.toString() === targetUserId) {
         return next(new AppError('You cannot follow yourself', 400));
     }
-    
+
     // Check if target user exists
     const targetUser = await User.findById(targetUserId);
     if (!targetUser) {
         return next(new AppError('User not found', 404));
     }
-    
+
     // Get current user
     const currentUser = await User.findById(userId);
     if (!currentUser) {
@@ -254,7 +255,7 @@ const followUser = asyncHandler(async (req, res, next) => {
     // Increment follower count for target user
     targetUser.followerCount = (targetUser.followerCount || 0) + 1;
     await targetUser.save();
-    
+
     res.status(200).json({
         success: true,
         message: `You are now following ${targetUser.username}`,
@@ -268,7 +269,7 @@ const followUser = asyncHandler(async (req, res, next) => {
 const unfollowUser = asyncHandler(async (req, res, next) => {
     const userId = req.user._id;
     const targetUserId = req.params.id;
-    
+
     // Validate target user ID
     if (!mongoose.Types.ObjectId.isValid(targetUserId)) {
         return next(new AppError('Invalid user ID', 400));
@@ -279,7 +280,7 @@ const unfollowUser = asyncHandler(async (req, res, next) => {
     if (!currentUser) {
         return next(new AppError('Current user not found', 404));
     }
-    
+
     // Check if actually following
     if (!currentUser.connections.includes(targetUserId)) {
         return next(new AppError('You are not following this user', 400));
@@ -297,7 +298,7 @@ const unfollowUser = asyncHandler(async (req, res, next) => {
         targetUser.followerCount = Math.max((targetUser.followerCount || 0) - 1, 0);
         await targetUser.save();
     }
-    
+
     res.status(200).json({
         success: true,
         message: `You have unfollowed ${targetUser ? targetUser.username : 'the user'}`,
@@ -368,6 +369,118 @@ const getFollowers = asyncHandler(async (req, res, next) => {
     });
 });
 
+// @desc    Create a new user (Admin only)
+// @route   POST /api/users
+// @access  Private (Admin only)
+const createUser = asyncHandler(async (req, res, next) => {
+    // Check if the requesting user is an admin
+    if (!req.user || req.user.role !== 'admin') {
+        return next(new AppError('Not authorized to create users', 403));
+    }
+
+    const { email, password, username, name, isAdmin } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !username) {
+        return next(new AppError('Email, password, and username are required', 400));
+    }
+
+    // Validate username format
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+        return next(new AppError('Invalid username format (3-30 chars, letters, numbers, underscore)', 400));
+    }
+
+    // Check if username is already taken
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+        return next(new AppError('Username already taken', 400));
+    }
+
+    // Check if email is already in use
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+        return next(new AppError('Email already in use', 400));
+    }
+
+    try {
+        // Create user in Firebase Auth
+        const userRecord = await admin.auth().createUser({
+            email,
+            password,
+            displayName: name || username,
+        });
+
+        // Create user in our database
+        const user = await User.create({
+            firebaseUid: userRecord.uid,
+            email,
+            username,
+            name: name || '',
+            role: isAdmin ? 'admin' : 'user', // Set role based on isAdmin flag
+            lastLogin: Date.now(),
+            // Set default preferences
+            preferences: { 
+                units: 'metric', 
+                privacy: { 
+                    profileVisibility: 'public', 
+                    trackVisibilityDefault: 'private' 
+                } 
+            },
+            statistics: { 
+                totalDistance: 0, 
+                totalTime: 0, 
+                totalTracks: 0, 
+                topSpeed: 0, 
+                avgSpeed: 0 
+            }
+        });
+
+        res.status(201).json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        // If Firebase user creation fails, we need to handle it
+        console.error('Error creating user:', error);
+        return next(new AppError(error.message || 'Failed to create user', 500));
+    }
+});
+
+// @desc    Get all users (Admin only)
+// @route   GET /api/users
+// @access  Private (Admin only)
+const getAllUsers = asyncHandler(async (req, res, next) => {
+    // Check if the requesting user is an admin
+    if (!req.user || req.user.role !== 'admin') {
+        return next(new AppError('Not authorized to access all users', 403));
+    }
+
+    // Get pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const total = await User.countDocuments();
+
+    // Get users with pagination
+    const users = await User.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+    res.status(200).json({
+        success: true,
+        pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalItems: total,
+            itemsPerPage: limit
+        },
+        users: users
+    });
+});
+
 module.exports = {
     getUserProfile,
     updateUserProfile,
@@ -376,5 +489,7 @@ module.exports = {
     followUser,
     unfollowUser,
     getConnections,
-    getFollowers
+    getFollowers,
+    createUser,
+    getAllUsers
 }; 

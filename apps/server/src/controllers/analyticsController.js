@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 // @access  Private (Synced user required)
 const getSummaryStats = asyncHandler(async (req, res, next) => {
     try {
-        // req.user is guaranteed by ensureSynced middleware
+    // req.user is guaranteed by ensureSynced middleware
         const userId = req.user._id;
         
         // Get total distance and duration from tracks
@@ -50,7 +50,7 @@ const getSummaryStats = asyncHandler(async (req, res, next) => {
         // Make sure we delete _id field if it exists
         if (stats._id !== undefined) {
             delete stats._id;
-        }
+    }
         
         res.status(200).json(stats);
     } catch (error) {
