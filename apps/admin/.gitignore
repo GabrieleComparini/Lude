@@ -1,58 +1,41 @@
-    # Dependency directories
-    node_modules
-    **/node_modules/
-    **/node_modules/**
-    /node_modules/
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Environment Variables
+.env
+.env.*
+!.env.example
+.md
 
-    # Build output
-    /dist
-    /admin
-    /build
-    *.out
+# dependencies
+node_modules/
 
-    # Environment variables files
-    .env
-    *.env
-    .env.*
-    !/.env.example # Se hai un file di esempio, puoi escluderlo dall'ignore
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
 
-    # Log files
-    *.log
-    logs/
-    npm-debug.log*
-    yarn-debug.log*
-    yarn-error.log*
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
-    # OS generated files
-    .DS_Store
-    .DS_Store?
-    ._*
-    .Spotlight-V100
-    .Trashes
-    ehthumbs.db
-    Thumbs.db
+# Metro
+.metro-health-check*
 
-    # Editor directories and files
-    .idea/
-    .vscode/
-    *.suo
-    *.ntvs*
-    *.njsproj
-    *.sln
-    *.sw?
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
-    # Firebase/GCP Service Account Keys (IMPORTANT!)
-    serviceAccountKey.json
-    *.json
+# macOS
+.DS_Store
+*.pem
 
-    # Expo specific
-    apps/mobile/.expo/
-    apps/mobile/web-build/
-    apps/mobile/.idea/
+# local env files
+.env*.local
 
-
-    # Render specific (if any configuration files are stored)
-
-    # Other
-    *.gz
-    *.zip
+# typescript
+*.tsbuildinfo
