@@ -1,5 +1,7 @@
     # Dependency directories
-    node_modules/*
+    node_modules
+    **/node_modules/
+    **/node_modules/**
     /node_modules/
 
     # Build output
@@ -48,11 +50,6 @@
     apps/mobile/web-build/
     apps/mobile/.idea/
 
-    # Next.js specific
-    apps/web/.next/
-    apps/web/out/
-    # .env.local is usually ignored by default by Next.js, but good to have
-    apps/web/.env.local
 
     # Render specific (if any configuration files are stored)
 
