@@ -72,9 +72,9 @@ const SpeedDistributionChart = () => {
             backgroundColor: theme.colors.surface,
             backgroundGradientFrom: theme.colors.surface,
             backgroundGradientTo: theme.colors.surface,
-            decimalPlaces: 1,
+            decimalPlaces: 0,
             color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.6})`,
+            labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity * 0.9})`,
             style: {
                 borderRadius: 8,
             },
@@ -83,13 +83,31 @@ const SpeedDistributionChart = () => {
                 strokeWidth: "0",
             },
             barPercentage: 0.6,
-            formatYLabel: (value) => `${value} min`,
+            formatYLabel: (value) => {
+                const minutes = Math.round(parseFloat(value));
+                return `${minutes}`;
+            },
+            propsForBackgroundLines: {
+                strokeWidth: 1,
+                stroke: `rgba(255, 255, 255, 0.1)`,
+                strokeDasharray: "5, 5"
+            },
+            propsForLabels: {
+                fontSize: 12,
+                fontWeight: '600',
+            },
+            withHorizontalLines: true,
+            withVerticalLines: false,
+            segments: 5,
         };
 
         return (
             <View style={styles.chartContainer}>
                 <Text style={styles.chartTitle}>Distribuzione Velocità</Text>
                 <Text style={styles.chartSubtitle}>(Minuti per range di velocità km/h)</Text>
+                <View style={styles.yAxisLabelContainer}>
+                    <Text style={styles.yAxisLabel}>Minuti</Text>
+                </View>
                 <BarChart
                     style={styles.chart}
                     data={chartData}
@@ -100,7 +118,8 @@ const SpeedDistributionChart = () => {
                     chartConfig={chartConfig}
                     verticalLabelRotation={0}
                     fromZero={true}
-                    showValuesOnTopOfBars={false}
+                    showValuesOnTopOfBars={true}
+                    withInnerLines={true}
                 />
             </View>
         );
@@ -145,6 +164,19 @@ const styles = StyleSheet.create({
     },
     chart: {
         borderRadius: 8,
+        marginLeft: -10,
+    },
+    yAxisLabelContainer: {
+        position: 'absolute',
+        left: 10,
+        top: '50%',
+        transform: [{ rotate: '-90deg' }],
+        zIndex: 1,
+    },
+    yAxisLabel: {
+        color: theme.colors.textSecondary,
+        fontSize: 12,
+        fontWeight: 'bold',
     },
     loadingContainer: {
         height: 220,
