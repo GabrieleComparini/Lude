@@ -13,7 +13,7 @@ import {
     Platform
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import apiClient from '../../api/client';
+import { saveTrack } from '../../api/services/trackService';
 import { useAuth } from '../../context/AuthContext'; // To potentially get default settings or vehicles later
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters'; // Assuming we move helpers
 
@@ -68,19 +68,47 @@ const SaveTrackScreen = () => {
         setLoading(true);
         setError(null);
 
+        // Check if we have valid timestamps in our route coordinates
+        console.log("Checking timestamps in route coordinates...");
+        let hasValidTimestamps = true;
+        const now = new Date().getTime();
+        routeCoordinates.forEach((point, index) => {
+            if (!point.timestamp) {
+                console.warn(`Missing timestamp at point ${index}`);
+                hasValidTimestamps = false;
+            }
+        });
+
+        // Generate timestamps if they're missing (based on duration)
+        if (!hasValidTimestamps) {
+            console.log("Generating timestamps for route points...");
+            const startTime = now - (duration * 1000); // Calculate start time based on duration
+            const intervalMs = duration * 1000 / Math.max(1, routeCoordinates.length - 1);
+            
+            routeCoordinates = routeCoordinates.map((point, index) => {
+                return {
+                    ...point,
+                    timestamp: startTime + (index * intervalMs)
+                };
+            });
+        }
+
         // Get startTime and endTime from the route data
-        const startTime = new Date(routeCoordinates[0].timestamp);
-        const endTime = new Date(routeCoordinates[routeCoordinates.length - 1].timestamp);
+        const startTime = new Date(routeCoordinates[0].timestamp || now - (duration * 1000));
+        const endTime = new Date(routeCoordinates[routeCoordinates.length - 1].timestamp || now);
+
+        console.log("Start time:", startTime.toISOString());
+        console.log("End time:", endTime.toISOString());
 
         // Prepare data payload for the API
         const trackData = {
              // Ensure route points have valid, non-null values where required by backend
             route: routeCoordinates.map(p => ({
-                latitude: p.latitude,
-                longitude: p.longitude,
+                lat: p.latitude,
+                lng: p.longitude,
                 altitude: p.altitude ?? null, // Send null if undefined/null
-                speed: p.speed ?? 0,      // Send 0 if undefined/null
-                timestamp: p.timestamp    // Assume timestamp is always present
+                speed: (p.speed !== undefined && p.speed >= 0) ? p.speed : 0, // Ensure speed is non-negative
+                timestamp: p.timestamp ? new Date(p.timestamp).toISOString() : new Date().toISOString() // Ensure valid ISO string
             })),
             startTime: startTime.toISOString(), // Add startTime (ISO format)
             endTime: endTime.toISOString(),   // Add endTime (ISO format)
@@ -95,24 +123,37 @@ const SaveTrackScreen = () => {
         };
 
         // Validate payload before sending (basic example)
-        if (isNaN(trackData.distance) || isNaN(trackData.duration) || isNaN(trackData.avgSpeed) || isNaN(trackData.maxSpeed) || !trackData.startTime || !trackData.endTime) {
-            console.error("Invalid calculated stats or times:", trackData);
-            setError('Could not calculate track statistics or times correctly. Cannot save.');
+        if (isNaN(trackData.distance) || isNaN(trackData.duration) || isNaN(trackData.avgSpeed) || isNaN(trackData.maxSpeed)) {
+            console.error("Invalid calculated stats:", trackData);
+            setError('Could not calculate track statistics correctly. Cannot save.');
             setLoading(false);
-            Alert.alert('Save Failed', 'Invalid statistics or timestamps calculated. Cannot save.');
+            Alert.alert('Save Failed', 'Invalid statistics calculated. Cannot save.');
             return;
         }
 
         try {
-            console.log("Saving track data...", /* Removed verbose logging for brevity */);
-            await apiClient.post('/api/tracks', trackData);
+            console.log("Saving track data with route length:", trackData.route.length);
+            console.log("First route point:", JSON.stringify(trackData.route[0]));
+            console.log("Last route point:", JSON.stringify(trackData.route[trackData.route.length - 1]));
+            
+            const savedTrack = await saveTrack(trackData);
+            console.log("Track saved successfully, response:", savedTrack);
+            
             setLoading(false);
             Alert.alert('Success', 'Track saved successfully!');
-            // Navigate back to Map or maybe to History tab?
-            navigation.navigate('HistoryTab', { screen: 'HistoryList' }); // Go to history list
-             // navigation.goBack(); // Alternative: just go back to map
+            
+            // Try to navigate to history tab, fall back to going back if it fails
+            try {
+                navigation.navigate('HistoryTab', { screen: 'HistoryList' });
+            } catch (navError) {
+                console.error('Navigation error:', navError);
+                // Fall back to going back
+                navigation.goBack();
+            }
         } catch (err) {
-            console.error('Error saving track:', err.response?.data || err.message);
+            console.error('Error saving track:', err);
+            console.error('Error response data:', err.response?.data);
+            console.error('Error status:', err.response?.status);
             const message = err.response?.data?.message || 'Failed to save track. Please try again.';
             setError(message);
             setLoading(false);

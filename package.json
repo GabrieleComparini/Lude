@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@react-navigation/material-top-tabs": "^7.2.13",
+    "@rnmapbox/maps": "^10.1.38",
+    "expo-image-picker": "^16.1.4",
+    "lodash": "^4.17.21",
+    "react-native-tab-view": "^3.5.2"
+  }
+}

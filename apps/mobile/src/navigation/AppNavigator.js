@@ -2,71 +2,180 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Import Stack Navigator
 import { Ionicons } from '@expo/vector-icons';
+import { TouchableOpacity, View, Text } from 'react-native';
+import { theme } from '../styles/theme';
 
 // Import Screens
+import HomeScreen from '../screens/App/HomeScreen';
 import MapScreen from '../screens/App/MapScreen';
-import HistoryScreen from '../screens/App/HistoryScreen';
-import StatsScreen from '../screens/App/StatsScreen';
+import SearchScreen from '../screens/App/SearchScreen';
+import ExploreScreen from '../screens/App/ExploreScreen';
+import ProfileScreen from '../screens/App/ProfileScreen';
 import SettingsScreen from '../screens/App/SettingsScreen';
-import ProfileScreen from '../screens/App/ProfileScreen'; // Import ProfileScreen
-import EditProfileScreen from '../screens/App/EditProfileScreen'; // Import EditProfileScreen
-import SaveTrackScreen from '../screens/App/SaveTrackScreen'; // <-- Import SaveTrackScreen
-// Import other screens needed in stacks (e.g., TripDetail, VehicleList etc later)
+import EditProfileScreen from '../screens/App/EditProfileScreen';
+import SaveTrackScreen from '../screens/App/SaveTrackScreen';
+import TripDetailScreen from '../screens/App/TripDetailScreen';
+import CommentsScreen from '../screens/App/CommentsScreen';
+import PublicProfileScreen from '../screens/App/PublicProfileScreen';
+import ConnectionsScreen from '../screens/App/ConnectionsScreen';
+// Gamification Screens
+import AchievementsScreen from '../screens/App/Gamification/AchievementsScreen';
+import LeaderboardsScreen from '../screens/App/Gamification/LeaderboardsScreen';
+import ChallengesScreen from '../screens/App/Gamification/ChallengesScreen';
+// Import Vehicle screens
+import VehicleListScreen from '../screens/App/VehicleListScreen';
+import AddEditVehicleScreen from '../screens/App/VehicleForms/AddEditVehicleScreen';
+
+// Placeholder removing
+// const PublicProfileScreen = () => <ProfileScreen isPublic={true} />;
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createNativeStackNavigator();
 const MapStack = createNativeStackNavigator();
-const HistoryStack = createNativeStackNavigator();
-const StatsStack = createNativeStackNavigator();
+const SearchStack = createNativeStackNavigator();
+const ExploreStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
+const VehicleStack = createNativeStackNavigator();
+
+// Aggiungo lo stack navigator per Home
+function HomeStackNavigator() {
+  return (
+    <HomeStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <HomeStack.Screen name="HomeScreen" component={HomeScreen} options={{ title: 'Home' }} />
+      <HomeStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <HomeStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <HomeStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+    </HomeStack.Navigator>
+  );
+}
 
 // Define Stack Navigators for each tab
 
 function MapStackNavigator() {
   return (
     <MapStack.Navigator 
-        // screenOptions={{ headerShown: false }} // Hide stack header if tab header is enough
-        screenOptions={AppNavigatorScreenOptions.stack} // Apply consistent styles
+        screenOptions={({ navigation }) => ({
+          ...AppNavigatorScreenOptions.stack,
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Settings')}
+              style={{ marginRight: 10 }}
+            >
+              <Ionicons name="settings-outline" size={24} color={theme.colors.white || '#fff'} />
+            </TouchableOpacity>
+          ),
+        })}
     >
       <MapStack.Screen name="MapHome" component={MapScreen} options={{ title: 'Map'}} />
       <MapStack.Screen 
           name="SaveTrack" 
           component={SaveTrackScreen} 
-          options={{ title: 'Save Track' }} // Set header title for the screen
+          options={{ title: 'Save Track' }}
       />
-      {/* Add screens navigable from Map, like Profile */}
-      <MapStack.Screen name="Profile" component={ProfileScreen} />
-      <MapStack.Screen name="EditProfile" component={EditProfileScreen} />
-      {/* Add Vehicle Navigator here if accessed from profile? */}
+      {/* Settings stack accessible from Map header */}
+      <MapStack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Settings' }}
+      />
+       {/* Gamification screens accessible from Settings */}
+      <MapStack.Screen
+          name="Achievements"
+          component={AchievementsScreen}
+          options={{ title: 'Obiettivi' }}
+      />
+      <MapStack.Screen
+          name="Leaderboards"
+          component={LeaderboardsScreen}
+          options={{ title: 'Classifiche' }}
+      />
+       <MapStack.Screen
+          name="Challenges"
+          component={ChallengesScreen}
+          options={{ title: 'Sfide' }}
+      />
+       {/* Vehicle stack accessible from Settings */}
+      <MapStack.Screen
+          name="Vehicles"
+          component={VehicleStackNavigator}
+          options={{
+            title: 'Garage',
+            headerShown: false
+          }}
+      />
+      {/* Other screens accessible globally or through other flows */}
+      <MapStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <MapStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <MapStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+      <MapStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
+      <MapStack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Modifica Profilo'}} />
+
     </MapStack.Navigator>
   );
 }
 
-function HistoryStackNavigator() {
+function SearchStackNavigator() {
   return (
-    <HistoryStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <HistoryStack.Screen name="HistoryList" component={HistoryScreen} options={{ title: 'Trip History'}} />
-      {/* <HistoryStack.Screen name="TripDetail" component={TripDetailScreen} /> */}
-    </HistoryStack.Navigator>
+    <SearchStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <SearchStack.Screen name="SearchUsers" component={SearchScreen} options={{ title: 'Cerca' }} />
+      <SearchStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <SearchStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
+      <SearchStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <SearchStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+    </SearchStack.Navigator>
   );
 }
 
-function StatsStackNavigator() {
+function ExploreStackNavigator() {
   return (
-    <StatsStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <StatsStack.Screen name="StatsOverview" component={StatsScreen} options={{ title: 'Statistics'}} />
-    </StatsStack.Navigator>
+    <ExploreStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <ExploreStack.Screen name="ExploreFeed" component={ExploreScreen} options={{ title: 'Explore', headerShown: false }} />
+      <ExploreStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <ExploreStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <ExploreStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+    </ExploreStack.Navigator>
   );
 }
 
-function SettingsStackNavigator() {
+// Vehicle Stack Navigator
+function VehicleStackNavigator() {
   return (
-    <SettingsStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <SettingsStack.Screen name="SettingsList" component={SettingsScreen} options={{ title: 'Settings'}} />
-      {/* Add screens navigable from Settings */}
-       <SettingsStack.Screen name="Profile" component={ProfileScreen} />
-       <SettingsStack.Screen name="EditProfile" component={EditProfileScreen} />
-       {/* Add Vehicle Navigator? PreferencesScreen? */}
-    </SettingsStack.Navigator>
+    <VehicleStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <VehicleStack.Screen name="VehicleList" component={VehicleListScreen} options={{ title: 'Garage' }} />
+      <VehicleStack.Screen
+        name="AddEditVehicle"
+        component={AddEditVehicleScreen}
+        options={({ route }) => ({
+          title: route.params?.vehicleId ? 'Modifica Veicolo' : 'Aggiungi Veicolo',
+        })}
+      />
+    </VehicleStack.Navigator>
+  );
+}
+
+function ProfileStackNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} options={{ title: 'Profilo' }} />
+      <ProfileStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Modifica Profilo' }}
+      />
+      <ProfileStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
+      <ProfileStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <ProfileStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <ProfileStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+      <ProfileStack.Screen
+          name="Vehicles" 
+          component={VehicleStackNavigator} 
+          options={{ 
+            title: 'Garage',
+            headerShown: false
+          }}
+       />
+    </ProfileStack.Navigator>
   );
 }
 
@@ -88,7 +197,27 @@ const AppNavigatorScreenOptions = {
 const AppNavigator = () => {
   return (
     <Tab.Navigator screenOptions={AppNavigatorScreenOptions.tab} >
-       <Tab.Screen 
+      <Tab.Screen 
+        name="HomeTab" 
+        component={HomeStackNavigator} 
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="SearchTab" 
+        component={SearchStackNavigator} 
+        options={{
+          title: 'Search',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
         name="MapTab" 
         component={MapStackNavigator} 
         options={{
@@ -99,32 +228,22 @@ const AppNavigator = () => {
         }}
       />
       <Tab.Screen 
-        name="HistoryTab" 
-        component={HistoryStackNavigator} 
+        name="ExploreTab" 
+        component={ExploreStackNavigator} 
         options={{
-          title: 'History',
+          title: 'Explore',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'list' : 'list-outline'} size={size} color={color} />
-          ),
-        }}
-        />
-      <Tab.Screen 
-        name="StatsTab" 
-        component={StatsStackNavigator} 
-        options={{
-          title: 'Stats',
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen 
-        name="SettingsTab" 
-        component={SettingsStackNavigator} 
+        name="ProfileTab" 
+        component={ProfileStackNavigator} 
         options={{
-          title: 'Settings',
+          title: 'Profile',
            tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'settings' : 'settings-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
         }}
       />

@@ -9,11 +9,17 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
-    Alert
+    Alert,
+    Image,
+    TouchableOpacity
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../../api/client'; // Import apiClient
+import { updateUserProfile } from '../../api/services/userService'; // Assuming this function exists/will exist
+import { theme } from '../../styles/theme'; // Corrected path
 
 const EditProfileScreen = () => {
     const { user, setUser } = useAuth(); // Get user and a way to update it locally
@@ -22,8 +28,11 @@ const EditProfileScreen = () => {
     const [name, setName] = useState(user?.name || '');
     const [username, setUsername] = useState(user?.username || '');
     const [bio, setBio] = useState(user?.bio || '');
+    const [profileImage, setProfileImage] = useState(user?.profileImage || null);
+    const [newImageUri, setNewImageUri] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     // Update state if user context changes (e.g., after initial load)
     useEffect(() => {
@@ -31,21 +40,77 @@ const EditProfileScreen = () => {
             setName(user.name || '');
             setUsername(user.username || '');
             setBio(user.bio || '');
+            setProfileImage(user.profileImage || null);
         }
     }, [user]);
+
+    // Request permissions for image picker
+    useEffect(() => {
+        (async () => {
+            if (Platform.OS !== 'web') {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert('Permission Required', 'Sorry, we need camera roll permissions to upload images!');
+                }
+            }
+        })();
+    }, []);
+
+    const pickImage = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                setNewImageUri(result.assets[0].uri);
+                setProfileImage(result.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Error picking image:', err);
+            Alert.alert('Error', 'Failed to pick image. Please try again.');
+        }
+    };
 
     const handleUpdate = async () => {
         setLoading(true);
         setError(null);
+        setUploadingImage(true);
 
+        try {
+            let formData = null;
+            
+            // Use FormData for image upload
+            if (newImageUri) {
+                formData = new FormData();
+                
+                // Add image file to form data
+                const imageName = newImageUri.split('/').pop();
+                const imageType = 'image/' + (imageName.split('.').pop() === 'png' ? 'png' : 'jpeg');
+                
+                formData.append('profileImage', {
+                    uri: newImageUri,
+                    name: imageName,
+                    type: imageType
+                });
+                
+                // Add other fields
+                if (name !== user?.name) formData.append('name', name);
+                if (username !== user?.username) formData.append('username', username);
+                if (bio !== user?.bio) formData.append('bio', bio);
+            } else {
+                // Regular JSON data without image
         const updateData = {};
         if (name !== user?.name) updateData.name = name;
         if (username !== user?.username) updateData.username = username;
         if (bio !== user?.bio) updateData.bio = bio;
-        // Add preferences later if needed
 
         if (Object.keys(updateData).length === 0) {
             setLoading(false);
+            setUploadingImage(false);
             Alert.alert("No Changes", "You haven't made any changes.");
             return;
         }
@@ -54,11 +119,20 @@ const EditProfileScreen = () => {
         if (updateData.username && !/^[a-zA-Z0-9_]{3,30}$/.test(updateData.username)){
              setError("Invalid username format (3-30 chars, letters, numbers, underscore).");
              setLoading(false);
+             setUploadingImage(false);
              return;
         }
+            }
 
-        try {
-            const response = await apiClient.put('/api/users/profile', updateData);
+            // Use different request based on whether we're uploading an image
+            const response = newImageUri 
+                ? await apiClient.put('/api/users/profile', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                  })
+                : await apiClient.put('/api/users/profile', formData || {});
+            
             // Update user data in context immediately for responsiveness
             setUser(response.data); 
             Alert.alert("Success", "Profile updated successfully!");
@@ -68,6 +142,7 @@ const EditProfileScreen = () => {
             setError(err.response?.data?.message || 'Failed to update profile. Please try again.');
         } finally {
             setLoading(false);
+            setUploadingImage(false);
         }
     };
 
@@ -81,7 +156,22 @@ const EditProfileScreen = () => {
 
                 {error && <Text style={styles.errorText}>{error}</Text>}
 
-                {/* Add Image Picker component here later */}
+                {/* Profile Image Picker */}
+                <TouchableOpacity style={styles.profileImageContainer} onPress={pickImage} disabled={loading}>
+                    {newImageUri ? (
+                        <Image source={{ uri: newImageUri }} style={styles.profileImage} />
+                    ) : profileImage ? (
+                        <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                    ) : (
+                        <View style={styles.profileImagePlaceholder}>
+                            <Ionicons name="person" size={60} color="#CCCCCC" />
+                        </View>
+                    )}
+                    <View style={styles.editIconContainer}>
+                        <Ionicons name="camera" size={24} color="#FFFFFF" />
+                    </View>
+                </TouchableOpacity>
+
                 <Text style={styles.label}>Username</Text>
                 <TextInput
                     style={styles.input}
@@ -116,10 +206,23 @@ const EditProfileScreen = () => {
                     editable={!loading}
                 />
 
+                {uploadingImage && (
+                    <View style={styles.loadingOverlay}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                        <Text style={styles.loadingText}>Caricamento immagine...</Text>
+                    </View>
+                )}
+
                 {loading ? (
                     <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
                 ) : (
-                    <Button title="Save Changes" onPress={handleUpdate} disabled={loading} />
+                    <TouchableOpacity 
+                        style={styles.saveButton} 
+                        onPress={handleUpdate} 
+                        disabled={loading}
+                    >
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </TouchableOpacity>
                 )}
             </ScrollView>
         </KeyboardAvoidingView>
@@ -129,36 +232,70 @@ const EditProfileScreen = () => {
 const styles = StyleSheet.create({
     flexContainer: {
         flex: 1,
+        backgroundColor: '#F8F8F8',
     },
     container: {
-        // flex: 1,
         alignItems: 'center',
         padding: 20,
-        // backgroundColor: '#1c1c1e', // Dark theme later
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 20,
-        // color: 'white',
+        color: '#333333',
+    },
+    profileImageContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        marginBottom: 20,
+        position: 'relative',
+    },
+    profileImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 60,
+        backgroundColor: '#E5E5E5',
+    },
+    profileImagePlaceholder: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 60,
+        backgroundColor: '#E5E5E5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    editIconContainer: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#007AFF',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     label: {
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 5,
         alignSelf: 'flex-start',
-        // color: '#ccc', // Dark theme later
+        color: '#333333',
     },
     input: {
         width: '100%',
         height: 50,
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: '#E0E0E0',
         borderRadius: 8,
         paddingHorizontal: 15,
         marginBottom: 20,
-        backgroundColor: '#fff',
+        backgroundColor: '#FFFFFF',
         fontSize: 16,
+        color: '#333333',
     },
     textArea: {
         height: 100, // Taller for bio
@@ -166,13 +303,45 @@ const styles = StyleSheet.create({
         paddingTop: 10,
     },
     errorText: {
-        color: 'red',
+        color: '#FF3B30',
         marginBottom: 15,
         textAlign: 'center'
     },
     loader: {
         marginTop: 20,
-    }
+    },
+    saveButton: {
+        backgroundColor: '#007AFF',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        width: '100%',
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject, // Cover the whole screen? Or just the button area? Adjust as needed.
+        // For covering just the container part:
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        // End container cover part
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10, // Make sure it's above other elements
+    },
+    loadingText: {
+        marginTop: 10,
+        color: theme.colors.white,
+        fontSize: 16,
+    },
 });
 
 export default EditProfileScreen; 

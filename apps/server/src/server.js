@@ -4,6 +4,7 @@ const path = require('path');
 const environment = require('./config/environment'); // Loads .env vars
 const connectDB = require('./config/database');
 const errorHandler = require('./middleware/errorHandler'); // Require the handler
+const AppError = require('./utils/AppError'); // Import AppError utility for 404 handling
 
 // --- Initialize Core Services ---
 require('./config/firebaseAdmin'); // Initialize Firebase Admin SDK (logs success/error)

@@ -58,3 +58,4 @@
     # Other
     *.gz
     *.zip
+node_modules

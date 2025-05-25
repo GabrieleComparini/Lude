@@ -1,24 +1,26 @@
 import axios from 'axios';
 import { auth } from '../config/firebase'; // Import Firebase auth instance
 
-// Get the backend API URL from environment variables
-const baseURL = process.env.EXPO_PUBLIC_API_URL;
+// Get the backend API URL from environment variables or use the known working endpoint
+const baseURL = process.env.EXPO_PUBLIC_API_URL || 'https://lude-backend.onrender.com';
 
-if (!baseURL) {
-    console.error("API Client Error: Missing EXPO_PUBLIC_API_URL environment variable. Check your .env file.");
-}
+console.log('API Client using baseURL:', baseURL);
 
 // Create an axios instance
 const apiClient = axios.create({
   baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
+  // Add timeout to prevent hanging requests
+  timeout: 10000,
 });
 
 // Add a request interceptor to automatically add the Firebase auth token
 apiClient.interceptors.request.use(
   async (config) => {
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data ? 'with data' : 'no data');
     // Check if the user is logged in via Firebase
     const currentUser = auth.currentUser;
     if (currentUser) {
@@ -37,11 +39,21 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     // Handle request error
+    console.error('API Client request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
-// Optional: Add response interceptors here if needed (e.g., for global error handling)
-// apiClient.interceptors.response.use(...);
+// Add response interceptors for logging and error handling
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log(`API Response from ${response.config.url}: Status ${response.status}`);
+    return response;
+  },
+  (error) => {
+    console.error('API Response Error:', error.message);
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient; 
