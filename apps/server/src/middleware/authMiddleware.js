@@ -1,5 +1,6 @@
 const admin = require('../config/firebaseAdmin');
 const User = require('../models/User');
+const AppError = require('../utils/AppError'); // Import AppError at the top
 
 // Utility function to handle async route handlers
 const asyncHandler = fn => (req, res, next) =>
@@ -70,15 +71,8 @@ const isAdmin = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
         next(); // User is an admin, proceed
     } else {
-        // Use AppError for consistent error handling if available
-        const AppError = require('../utils/AppError'); // Require AppError locally
-        if (AppError) {
-             next(new AppError('Forbidden: Administrator privileges required', 403));
-        } else {
-            // Fallback if AppError is not available
-            res.status(403).json({ message: 'Forbidden: Administrator privileges required' });
-        }
-       
+        // User is not an admin, or user object doesn't exist
+        next(new AppError('Forbidden: Administrator privileges required', 403));
     }
 };
 

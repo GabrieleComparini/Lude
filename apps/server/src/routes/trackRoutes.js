@@ -5,7 +5,8 @@ const {
     getUserTracks,
     getPublicTracks,
     updateTrack,
-    deleteTrack
+    deleteTrack,
+    updateTrackVisibility
 } = require('../controllers/trackController');
 const { protect, ensureSynced } = require('../middleware/authMiddleware');
 const { handleReaction } = require('../controllers/reactionController');
@@ -22,11 +23,6 @@ router.use('/:trackId/comments', commentRouter);
 // Get public tracks (paginated)
 router.get('/public', getPublicTracks);
 
-// Get a specific track by ID (public access check is done in controller)
-// Need to handle potential auth for private tracks, so protect is applied broadly here
-// but the controller logic decides final access.
-router.get('/:id', protect, getTrackById); // Apply protect to allow req.user check for private tracks
-
 // --- Protected Routes (Require logged-in, synced user) ---
 
 // Save a new track
@@ -35,13 +31,21 @@ router.post('/', protect, ensureSynced, saveTrack);
 // Get logged-in user's tracks (paginated)
 router.get('/list', protect, ensureSynced, getUserTracks);
 
-// Update a specific track (owner only - checked in controller)
+// Handle reactions to a track
+router.post('/:trackId/react', protect, ensureSynced, handleReaction);
+
+// Update track details (description, tags, isPublic)
 router.put('/:id', protect, ensureSynced, updateTrack);
 
-// Delete a specific track (owner only - checked in controller)
+// Update track visibility (public/private)
+router.patch('/:id/visibility', protect, ensureSynced, updateTrackVisibility);
+
+// Delete a track
 router.delete('/:id', protect, ensureSynced, deleteTrack);
 
-// --- Reaction Route ---
-router.post('/:trackId/react', protect, ensureSynced, handleReaction);
+// Get a specific track by ID (public access check is done in controller)
+// Need to handle potential auth for private tracks, so protect is applied broadly here
+// but the controller logic decides final access.
+router.get('/:id', protect, getTrackById);
 
 module.exports = router; 
