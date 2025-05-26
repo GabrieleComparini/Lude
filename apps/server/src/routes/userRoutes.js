@@ -21,9 +21,6 @@ router.route('/profile')
     .get(protect, ensureSynced, getUserProfile)
     .put(protect, ensureSynced, upload.single('profileImage'), updateUserProfile); // Apply upload middleware for profile image
 
-// Alias route for /me -> /profile for consistency with other APIs
-router.get('/me', protect, ensureSynced, getUserProfile);
-
 // Search users
 router.get('/search', protect, searchUsers);
 
