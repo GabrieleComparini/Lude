@@ -5,17 +5,26 @@ import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 
 const RootNavigator = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, needsOnboarding } = useAuth();
 
   if (loading) {
     // Show loading indicator while checking auth state
     return <SplashScreen />;
   }
 
-  // If user is authenticated (user object exists from our backend sync),
-  // show the main app navigator.
-  // Otherwise, show the authentication navigator.
-  return user ? <AppNavigator /> : <AuthNavigator />;
+  // Se l'utente non è autenticato, mostra il navigatore di autenticazione
+  if (!user) {
+    return <AuthNavigator />;
+  }
+  
+  // Se l'utente è autenticato ma ha bisogno dell'onboarding, mostra comunque
+  // l'AuthNavigator (che includerà le schermate di onboarding)
+  if (needsOnboarding) {
+    return <AuthNavigator />;
+  }
+  
+  // Altrimenti, mostra il navigatore principale dell'app
+  return <AppNavigator />;
 };
 
 export default RootNavigator; 

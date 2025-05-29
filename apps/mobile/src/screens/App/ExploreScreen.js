@@ -1,45 +1,22 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 
-import FriendsFeedScreen from './Feed/FriendsFeedScreen';
-import GlobalFeedScreen from './Feed/GlobalFeedScreen';
-
-const Tab = createMaterialTopTabNavigator();
-
+// Questo componente serve solo come reindirizzamento alla nuova schermata dei feed
 const ExploreScreen = () => {
-  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    // Reindirizza alla nuova schermata dei feed
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'ExploreFeed' }],
+    });
+  }, [navigation]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Tab.Navigator
-        screenOptions={{
-          tabBarStyle: {
-            backgroundColor: '#1c1c1e',
-          },
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: '#999',
-          tabBarIndicatorStyle: {
-            backgroundColor: '#007AFF',
-          },
-          tabBarLabelStyle: {
-            fontWeight: 'bold',
-            textTransform: 'none',
-          },
-        }}
-      >
-        <Tab.Screen 
-          name="Friends" 
-          component={FriendsFeedScreen} 
-          options={{ title: 'Friends' }}
-        />
-        <Tab.Screen 
-          name="Global" 
-          component={GlobalFeedScreen} 
-          options={{ title: 'Global' }}
-        />
-      </Tab.Navigator>
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#007AFF" />
     </View>
   );
 };
@@ -47,7 +24,9 @@ const ExploreScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
 });
 

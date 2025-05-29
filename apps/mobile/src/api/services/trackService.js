@@ -72,6 +72,73 @@ export const updateTrack = async (trackId, updateData) => {
 };
 
 /**
+ * Get track comments
+ * @param {string} trackId - ID of the track
+ * @param {Object} options - Query options (page, limit)
+ * @returns {Promise} Promise with comments data
+ */
+export const getTrackComments = async (trackId, options = {}) => {
+  const { page = 1, limit = 15 } = options;
+  try {
+    const response = await apiClient.get(`/api/tracks/${trackId}/comments`, {
+      params: { page, limit }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching track comments:', error);
+    throw error;
+  }
+};
+
+/**
+ * Add a comment to a track
+ * @param {string} trackId - ID of the track
+ * @param {string} text - Comment text
+ * @returns {Promise} Promise with new comment data
+ */
+export const addComment = async (trackId, text) => {
+  try {
+    const response = await apiClient.post(`/api/tracks/${trackId}/comments`, { text });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a comment
+ * @param {string} trackId - ID of the track
+ * @param {string} commentId - ID of the comment to delete
+ * @returns {Promise} Promise with success message
+ */
+export const deleteComment = async (trackId, commentId) => {
+  try {
+    const response = await apiClient.delete(`/api/tracks/${trackId}/comments/${commentId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    throw error;
+  }
+};
+
+/**
+ * Add a reaction to a track
+ * @param {string} trackId - ID of the track
+ * @param {Object} reactionData - { type: 'like'|'wow', add: boolean }
+ * @returns {Promise} Promise with updated reactions data
+ */
+export const addReaction = async (trackId, reactionData) => {
+  try {
+    const response = await apiClient.post(`/api/tracks/${trackId}/react`, reactionData);
+    return response.data;
+  } catch (error) {
+    console.error('Error adding reaction:', error);
+    throw error;
+  }
+};
+
+/**
  * Delete a track
  * @param {string} trackId - ID of the track to delete
  * @returns {Promise} Promise with success message

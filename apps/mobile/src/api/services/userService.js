@@ -1,72 +1,47 @@
 import apiClient from '../client';
 
 /**
- * Search for users by query string
- * @param {string} query - Search query for username, name, etc.
+ * Search for users
+ * @param {string} query - Search query
+ * @param {Object} options - Query options (page, limit)
  * @returns {Promise} Promise with search results
  */
-export const searchUsers = async (query) => {
+export const searchUsers = async (query, options = {}) => {
+  const { page = 1, limit = 10 } = options;
   try {
-    // Add direct URL construction with explicit endpoint
-    const url = `/api/users/search?q=${encodeURIComponent(query)}`;
-    console.log('Making search request to:', url);
-    
-    // Set options for the request
-    const options = {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        // Remove any potentially problematic headers
-        'Accept': 'application/json'
-      }
-    };
-    
-    const response = await apiClient.get(url, options);
-    console.log('Search response:', response.status, response.data);
+    const response = await apiClient.get('/api/users/search', {
+      params: { q: query, page, limit }
+    });
     return response.data;
   } catch (error) {
     console.error('Error searching users:', error);
-    // Log more details about the error for debugging
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-      console.error('Error response headers:', error.response.headers);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('Error request:', error.request);
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error message:', error.message);
-    }
     throw error;
   }
 };
 
 /**
- * Get user profile data by username
- * @param {string} username - Username of the user to retrieve
+ * Get user profile by username
+ * @param {string} username - Username to fetch
  * @returns {Promise} Promise with user profile data
  */
 export const getUserProfile = async (username) => {
   try {
-    const response = await apiClient.get(`/api/users/${username}`);
+    const response = await apiClient.get(`/api/users/profile/${username}`);
     return response.data;
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error('Error fetching user profile:', error);
     throw error;
   }
 };
 
 /**
  * Follow a user
- * @param {string} username - Username of the user to follow
- * @returns {Promise} Promise with follow status
+ * @param {string} userId - ID of the user to follow
+ * @returns {Promise} Promise with follow result
  */
-export const followUser = async (username) => {
+export const followUser = async (userId) => {
   try {
-    const response = await apiClient.post(`/api/users/${username}/follow`);
+    const response = await apiClient.post(`/api/users/${userId}/follow`);
     return response.data;
   } catch (error) {
     console.error('Error following user:', error);
@@ -76,12 +51,12 @@ export const followUser = async (username) => {
 
 /**
  * Unfollow a user
- * @param {string} username - Username of the user to unfollow
- * @returns {Promise} Promise with unfollow status
+ * @param {string} userId - ID of the user to unfollow
+ * @returns {Promise} Promise with unfollow result
  */
-export const unfollowUser = async (username) => {
+export const unfollowUser = async (userId) => {
   try {
-    const response = await apiClient.post(`/api/users/${username}/unfollow`);
+    const response = await apiClient.delete(`/api/users/${userId}/follow`);
     return response.data;
   } catch (error) {
     console.error('Error unfollowing user:', error);
@@ -90,29 +65,37 @@ export const unfollowUser = async (username) => {
 };
 
 /**
- * Get user's following list
- * @returns {Promise} Promise with list of users the current user is following
+ * Get users followed by current user
+ * @param {Object} options - Query options (page, limit)
+ * @returns {Promise} Promise with list of followed users
  */
-export const getFollowing = async () => {
+export const getFollowing = async (options = {}) => {
+  const { page = 1, limit = 20 } = options;
   try {
-    const response = await apiClient.get('/api/users/following');
+    const response = await apiClient.get('/api/users/following', {
+      params: { page, limit }
+    });
     return response.data;
   } catch (error) {
-    console.error('Error getting following list:', error);
+    console.error('Error fetching following users:', error);
     throw error;
   }
 };
 
 /**
- * Get user's followers list
- * @returns {Promise} Promise with list of users following the current user
+ * Get users who follow the current user
+ * @param {Object} options - Query options (page, limit)
+ * @returns {Promise} Promise with list of followers
  */
-export const getFollowers = async () => {
+export const getFollowers = async (options = {}) => {
+  const { page = 1, limit = 20 } = options;
   try {
-    const response = await apiClient.get('/api/users/followers');
+    const response = await apiClient.get('/api/users/followers', {
+      params: { page, limit }
+    });
     return response.data;
   } catch (error) {
-    console.error('Error getting followers list:', error);
+    console.error('Error fetching followers:', error);
     throw error;
   }
 };

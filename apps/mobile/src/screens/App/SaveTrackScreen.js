@@ -16,6 +16,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { saveTrack } from '../../api/services/trackService';
 import { useAuth } from '../../context/AuthContext'; // To potentially get default settings or vehicles later
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters'; // Assuming we move helpers
+import VehiclePicker from '../../components/VehiclePicker'; // Import the VehiclePicker component
 
 const SaveTrackScreen = () => {
     const route = useRoute();
@@ -28,7 +29,7 @@ const SaveTrackScreen = () => {
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState(''); // Comma-separated string
     const [isPublic, setIsPublic] = useState(false); // Default to private
-    const [vehicleId, setVehicleId] = useState(null); // TODO: Implement Vehicle Selection
+    const [vehicleId, setVehicleId] = useState(null); // State for selected vehicle
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -119,7 +120,7 @@ const SaveTrackScreen = () => {
             description: description.trim(),
             tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag), // Array of strings
             isPublic: isPublic,
-            // vehicleId: vehicleId, // Add when implemented
+            vehicleId: vehicleId, // Include the vehicleId in the payload
         };
 
         // Validate payload before sending (basic example)
@@ -215,8 +216,12 @@ const SaveTrackScreen = () => {
                     editable={!loading}
                 />
 
-                {/* TODO: Add Vehicle Picker Component Here */}
-                <Text style={styles.label}>Vehicle: (TODO)</Text>
+                <Text style={styles.label}>Veicolo</Text>
+                <VehiclePicker 
+                    selectedVehicleId={vehicleId}
+                    onVehicleSelect={setVehicleId}
+                    disabled={loading}
+                />
 
                 <View style={styles.switchContainer}>
                     <Text style={styles.label}>Make Public?</Text>

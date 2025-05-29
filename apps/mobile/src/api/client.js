@@ -1,59 +1,106 @@
 import axios from 'axios';
-import { auth } from '../config/firebase'; // Import Firebase auth instance
+import { API_URL } from '../config/api';
+import { auth } from '../config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Get the backend API URL from environment variables or use the known working endpoint
-const baseURL = process.env.EXPO_PUBLIC_API_URL || 'https://lude-backend.onrender.com';
-
-console.log('API Client using baseURL:', baseURL);
-
-// Create an axios instance
+// Create Axios instance with base URL
 const apiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  // Add timeout to prevent hanging requests
-  timeout: 10000,
+    baseURL: API_URL,
+    timeout: 15000,
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
 
-// Add a request interceptor to automatically add the Firebase auth token
+// Add request interceptor to add auth token to requests
 apiClient.interceptors.request.use(
-  async (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data ? 'with data' : 'no data');
-    // Check if the user is logged in via Firebase
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        // Get the Firebase ID token
-        const token = await currentUser.getIdToken(); // This automatically refreshes the token if needed
-        // Set the Authorization header
-        config.headers.Authorization = `Bearer ${token}`;
-      } catch (error) {
-        console.error('Error getting Firebase ID token:', error);
-        // Handle error appropriately - maybe reject the request or let it proceed without token?
-        // For now, log the error and proceed without the token.
-      }
+    async (config) => {
+        try {
+            // Get current user from Firebase auth
+            const user = auth.currentUser;
+            
+            if (user) {
+                // Get token
+                const token = await user.getIdToken();
+                // Add token to request headers
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
+        } catch (error) {
+            console.error("Error getting auth token:", error);
+        }
+        return config;
+    },
+    (error) => {
+        console.error("API Request Error:", error);
+        return Promise.reject(error);
     }
-    return config;
-  },
-  (error) => {
-    // Handle request error
-    console.error('API Client request interceptor error:', error);
-    return Promise.reject(error);
-  }
 );
 
-// Add response interceptors for logging and error handling
+// Add response interceptor to handle errors
 apiClient.interceptors.response.use(
-  (response) => {
-    console.log(`API Response from ${response.config.url}: Status ${response.status}`);
-    return response;
-  },
-  (error) => {
-    console.error('API Response Error:', error.message);
-    return Promise.reject(error);
-  }
+    (response) => {
+        // Success handler - just return the response
+        return response;
+    },
+    async (error) => {
+        // Error handler
+        const originalRequest = error.config;
+        
+        // Log error details for debugging
+        if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            console.error("API Response Error:", error.message);
+            console.log("Error Response Data:", error.response.data);
+            console.log("Error Response Status:", error.response.status);
+        } else if (error.request) {
+            // The request was made but no response was received
+            console.error("API No Response Error:", error.message);
+            console.log("Request:", error.request);
+        } else {
+            // Something happened in setting up the request
+            console.error("API Request Setup Error:", error.message);
+        }
+        
+        // Token expired handling - 401 for expired tokens
+        if (error.response && error.response.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            
+            try {
+                // Get current user from Firebase
+                const user = auth.currentUser;
+                
+                if (user) {
+                    // Force refresh token
+                    const newToken = await user.getIdToken(true);
+                    // Update header and retry request
+                    originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+                    return apiClient(originalRequest);
+                }
+            } catch (refreshError) {
+                console.error("Error refreshing token:", refreshError);
+                
+                // If token refresh fails, clear stored data and return to login
+                try {
+                    await AsyncStorage.removeItem('userData');
+                } catch (storageError) {
+                    console.error("Error clearing storage:", storageError);
+                }
+            }
+        }
+        
+        // Handle 404 for certain endpoints more gracefully
+        if (error.response && error.response.status === 404) {
+            // If it's a specific profile endpoint that 404s during app initialization,
+            // don't treat it as a fatal error - the app's auth flow will handle it
+            const url = originalRequest.url;
+            if (url.includes('/api/users/profile') || url.includes('/api/users/me')) {
+                console.log("Profile endpoint 404 - this may be expected for new users");
+            }
+        }
+        
+        return Promise.reject(error);
+    }
 );
 
 export default apiClient; 

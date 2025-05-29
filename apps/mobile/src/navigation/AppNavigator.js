@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Import Stack Navigator
 import { Ionicons } from '@expo/vector-icons';
-import { TouchableOpacity, View, Text } from 'react-native';
+import { TouchableOpacity, View, Text, Platform } from 'react-native';
 import { theme } from '../styles/theme';
 
 // Import Screens
@@ -15,8 +15,9 @@ import SettingsScreen from '../screens/App/SettingsScreen';
 import EditProfileScreen from '../screens/App/EditProfileScreen';
 import SaveTrackScreen from '../screens/App/SaveTrackScreen';
 import TripDetailScreen from '../screens/App/TripDetailScreen';
-import CommentsScreen from '../screens/App/CommentsScreen';
-import PublicProfileScreen from '../screens/App/PublicProfileScreen';
+import CommentsScreen from '../screens/App/Feed/CommentsScreen';
+import PublicProfileScreen from '../screens/App/Feed/PublicProfileScreen';
+import ExploreFeedScreen from '../screens/App/Feed/ExploreFeedScreen';
 import ConnectionsScreen from '../screens/App/ConnectionsScreen';
 // Gamification Screens
 import AchievementsScreen from '../screens/App/Gamification/AchievementsScreen';
@@ -37,6 +38,11 @@ const ExploreStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 const VehicleStack = createNativeStackNavigator();
+
+// Note: The App Navigator is completely separate from the Auth Navigator.
+// Onboarding screens (ProfileOnboarding, VehicleOnboarding, VehicleDetailsOnboarding)
+// are only accessible through the Auth Navigator and not from the main app flow.
+// This separation ensures users can't accidentally return to onboarding screens.
 
 // Aggiungo lo stack navigator per Home
 function HomeStackNavigator() {
@@ -130,7 +136,7 @@ function SearchStackNavigator() {
 function ExploreStackNavigator() {
   return (
     <ExploreStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <ExploreStack.Screen name="ExploreFeed" component={ExploreScreen} options={{ title: 'Explore', headerShown: false }} />
+      <ExploreStack.Screen name="ExploreFeed" component={ExploreFeedScreen} options={{ title: 'Explore', headerShown: false }} />
       <ExploreStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
       <ExploreStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
       <ExploreStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
@@ -196,7 +202,21 @@ const AppNavigatorScreenOptions = {
 
 const AppNavigator = () => {
   return (
-    <Tab.Navigator screenOptions={AppNavigatorScreenOptions.tab} >
+    <Tab.Navigator 
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: '#777',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#f0f0f0',
+          paddingBottom: Platform.OS === 'ios' ? 25 : 5,
+          paddingTop: 5,
+          height: Platform.OS === 'ios' ? 90 : 60,
+        }
+      }}
+    >
       <Tab.Screen 
         name="HomeTab" 
         component={HomeStackNavigator} 
