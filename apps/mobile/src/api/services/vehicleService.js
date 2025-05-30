@@ -42,3 +42,34 @@ export const getDefaultVehicle = async () => {
     throw error;
   }
 }; 
+
+/**
+ * Add a new vehicle
+ * @param {Object} vehicleData - Vehicle data to add
+ * @returns {Promise} Promise with the created vehicle data
+ */
+export const addVehicle = async (vehicleData) => {
+  try {
+    const response = await apiClient.post('/api/vehicles', vehicleData);
+    return response.data;
+  } catch (error) {
+    console.error('Error adding vehicle:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update a vehicle
+ * @param {string} vehicleId - ID of the vehicle to update
+ * @param {Object} vehicleData - Updated vehicle data
+ * @returns {Promise} Promise with the updated vehicle data
+ */
+export const updateVehicle = async (vehicleId, vehicleData) => {
+  try {
+    const response = await apiClient.put(`/api/vehicles/${vehicleId}`, vehicleData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating vehicle:', error);
+    throw error;
+  }
+}; 

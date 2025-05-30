@@ -26,10 +26,40 @@ export const searchUsers = async (query, options = {}) => {
  */
 export const getUserProfile = async (username) => {
   try {
-    const response = await apiClient.get(`/api/users/profile/${username}`);
-    return response.data;
+    // Prima prova il nuovo endpoint corretto
+    try {
+      const response = await apiClient.get(`/api/users/${username}`);
+      return response.data;
+    } catch (initialError) {
+      console.log(`Tried new endpoint format but failed: ${initialError.message}`);
+      
+      // Se il nuovo endpoint fallisce, prova con l'endpoint legacy
+      const fallbackResponse = await apiClient.get(`/api/users/profile/${username}`);
+      return fallbackResponse.data;
+    }
   } catch (error) {
     console.error('Error fetching user profile:', error);
+    
+    // Restituisci un profilo predefinito in caso di errore 404
+    if (error.response && error.response.status === 404) {
+      console.log('Profilo non trovato, restituzione profilo predefinito');
+      return {
+        username: username,
+        displayName: username,
+        bio: 'Profilo non disponibile',
+        profileImage: null,
+        isFollowing: false,
+        statistics: {
+          totalDistance: 0,
+          totalTime: 0,
+          topSpeed: 0,
+          avgSpeed: 0
+        },
+        followersCount: 0,
+        followingCount: 0
+      };
+    }
+    
     throw error;
   }
 };
@@ -44,6 +74,15 @@ export const followUser = async (userId) => {
     const response = await apiClient.post(`/api/users/${userId}/follow`);
     return response.data;
   } catch (error) {
+    // Gestire specificamente l'errore "già seguendo"
+    if (error.response && error.response.status === 400 && 
+        error.response.data && error.response.data.message && 
+        error.response.data.message.includes('already following')) {
+      console.log('Already following this user, returning success anyway');
+      // Restituisci un oggetto di successo simulato anziché propagare l'errore
+      return { success: true, isFollowing: true };
+    }
+    
     console.error('Error following user:', error);
     throw error;
   }
@@ -59,6 +98,16 @@ export const unfollowUser = async (userId) => {
     const response = await apiClient.delete(`/api/users/${userId}/follow`);
     return response.data;
   } catch (error) {
+    // Gestire specificamente l'errore "non stai seguendo"
+    if (error.response && error.response.status === 400 && 
+        error.response.data && error.response.data.message && 
+        (error.response.data.message.includes('not following') || 
+         error.response.data.message.includes('already not following'))) {
+      console.log('Already not following this user, returning success anyway');
+      // Restituisci un oggetto di successo simulato anziché propagare l'errore
+      return { success: true, isFollowing: false };
+    }
+    
     console.error('Error unfollowing user:', error);
     throw error;
   }
@@ -96,6 +145,76 @@ export const getFollowers = async (options = {}) => {
     return response.data;
   } catch (error) {
     console.error('Error fetching followers:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get users followed by a specific user
+ * @param {string} username - Username to get following list for
+ * @param {Object} options - Query options (page, limit)
+ * @returns {Promise} Promise with list of followed users
+ */
+export const getFollowingList = async (username, options = {}) => {
+  const { page = 1, limit = 20 } = options;
+  try {
+    // Prima prova il nuovo endpoint
+    try {
+      const response = await apiClient.get(`/api/users/${username}/following`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (initialError) {
+      console.log(`Tried new following endpoint format but failed: ${initialError.message}`);
+      
+      // Fallback all'endpoint legacy se esiste
+      const fallbackResponse = await apiClient.get(`/api/users/profile/${username}/following`, {
+        params: { page, limit }
+      });
+      return fallbackResponse.data;
+    }
+  } catch (error) {
+    console.error('Error fetching following list:', error);
+    // In caso di errore, restituisci un array vuoto e non interrompere il flusso
+    if (error.response && error.response.status === 404) {
+      console.log('Following list not found, returning empty array');
+      return { users: [] };
+    }
+    throw error;
+  }
+};
+
+/**
+ * Get users who follow a specific user
+ * @param {string} username - Username to get followers list for
+ * @param {Object} options - Query options (page, limit)
+ * @returns {Promise} Promise with list of followers
+ */
+export const getFollowersList = async (username, options = {}) => {
+  const { page = 1, limit = 20 } = options;
+  try {
+    // Prima prova il nuovo endpoint
+    try {
+      const response = await apiClient.get(`/api/users/${username}/followers`, {
+        params: { page, limit }
+      });
+      return response.data;
+    } catch (initialError) {
+      console.log(`Tried new followers endpoint format but failed: ${initialError.message}`);
+      
+      // Fallback all'endpoint legacy se esiste
+      const fallbackResponse = await apiClient.get(`/api/users/profile/${username}/followers`, {
+        params: { page, limit }
+      });
+      return fallbackResponse.data;
+    }
+  } catch (error) {
+    console.error('Error fetching followers list:', error);
+    // In caso di errore, restituisci un array vuoto e non interrompere il flusso
+    if (error.response && error.response.status === 404) {
+      console.log('Followers list not found, returning empty array');
+      return { users: [] };
+    }
     throw error;
   }
 };

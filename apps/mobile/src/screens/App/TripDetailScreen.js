@@ -15,10 +15,191 @@ import {
   Image
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import MapView, { Polyline, Marker } from 'react-native-maps';
+import MapView, { Polyline, Marker, Callout } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { getTrackById, updateTrack } from '../../api/services/trackService';
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
+import { theme } from '../../styles/theme';
+
+// Dark mode map style
+const darkMapStyle = [
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#212121"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#212121"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.country",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#9e9e9e"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.locality",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#bdbdbd"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#181818"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#616161"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#1b1b1b"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.fill",
+    "stylers": [
+      {
+        "color": "#2c2c2c"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8a8a8a"
+      }
+    ]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#373737"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#3c3c3c"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#4e4e4e"
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#616161"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#757575"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#000000"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#3d3d3d"
+      }
+    ]
+  }
+];
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_SHEET_MIN_HEIGHT = 170; // Height of collapsed bottom sheet
@@ -33,10 +214,12 @@ const TripDetailScreen = () => {
   const [mapRegion, setMapRegion] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [mapType, setMapType] = useState('standard');
   
   const bottomSheetHeight = useRef(new Animated.Value(BOTTOM_SHEET_MIN_HEIGHT)).current;
   const mapRef = useRef(null);
-
+  
   const route = useRoute();
   const navigation = useNavigation();
   const { trackId } = route.params;
@@ -101,7 +284,7 @@ const TripDetailScreen = () => {
     }).start();
     setIsExpanded(false);
   };
-
+  
   // Carica i dettagli del tracciato
   useEffect(() => {
     const fetchTrackDetails = async () => {
@@ -165,6 +348,49 @@ const TripDetailScreen = () => {
     return '#E600FF';
   };
   
+  // Trova il punto più vicino sulla traccia in base alle coordinate del tocco
+  const findClosestPoint = (touchCoords) => {
+    if (!track || !track.route || track.route.length === 0) return null;
+    
+    let closestPoint = null;
+    let minDistance = Infinity;
+    
+    track.route.forEach(point => {
+      // Calcola la distanza tra il punto toccato e il punto della traccia (formula di Haversine semplificata)
+      const distance = Math.sqrt(
+        Math.pow(point.lat - touchCoords.latitude, 2) + 
+        Math.pow(point.lng - touchCoords.longitude, 2)
+      );
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPoint = point;
+      }
+    });
+    
+    // Verifica che il punto sia abbastanza vicino al tocco (per evitare tocchi lontani dalla traccia)
+    if (minDistance < 0.005) { // Valore empirico, da regolare in base alla sensibilità desiderata
+      return closestPoint;
+    }
+    
+    return null;
+  };
+  
+  // Gestisce il tocco sulla mappa
+  const handleMapPress = (event) => {
+    // Ignora il tocco se proviene dal bottom sheet
+    if (event.nativeEvent.action === 'marker-press') return;
+    
+    const touchCoords = event.nativeEvent.coordinate;
+    const closest = findClosestPoint(touchCoords);
+    
+    if (closest) {
+      setSelectedPoint(closest);
+    } else {
+      setSelectedPoint(null);
+    }
+  };
+  
   // Renderizza le statistiche minime (parte inferiore)
   const renderMinStats = () => {
     if (!track) return null;
@@ -208,8 +434,8 @@ const TripDetailScreen = () => {
                   {track.vehicleId.make} {track.vehicleId.model}
                   {track.vehicleId.nickname && ` (${track.vehicleId.nickname})`}
                 </Text>
-              </View>
-            </View>
+          </View>
+          </View>
           )}
         </View>
       </View>
@@ -226,28 +452,28 @@ const TripDetailScreen = () => {
         <View style={styles.statsSection}>
           <Text style={styles.sectionTitle}>Statistiche</Text>
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Ionicons name="map" size={24} color="#007AFF" />
-              <Text style={styles.statValue}>{formatDistance(track.distance)}</Text>
-              <Text style={styles.statLabel}>Distanza (km)</Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <Ionicons name="time" size={24} color="#007AFF" />
-              <Text style={styles.statValue}>{formatTime(track.duration)}</Text>
-              <Text style={styles.statLabel}>Durata</Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <Ionicons name="speedometer" size={24} color="#007AFF" />
-              <Text style={styles.statValue}>{formatSpeed(track.avgSpeed)}</Text>
-              <Text style={styles.statLabel}>Vel. Media (km/h)</Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <Ionicons name="trending-up" size={24} color="#007AFF" />
-              <Text style={styles.statValue}>{formatSpeed(track.maxSpeed)}</Text>
-              <Text style={styles.statLabel}>Vel. Max (km/h)</Text>
+        <View style={styles.statCard}>
+          <Ionicons name="map" size={24} color="#007AFF" />
+          <Text style={styles.statValue}>{formatDistance(track.distance)}</Text>
+          <Text style={styles.statLabel}>Distanza (km)</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Ionicons name="time" size={24} color="#007AFF" />
+          <Text style={styles.statValue}>{formatTime(track.duration)}</Text>
+          <Text style={styles.statLabel}>Durata</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Ionicons name="speedometer" size={24} color="#007AFF" />
+          <Text style={styles.statValue}>{formatSpeed(track.avgSpeed)}</Text>
+          <Text style={styles.statLabel}>Vel. Media (km/h)</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Ionicons name="trending-up" size={24} color="#007AFF" />
+          <Text style={styles.statValue}>{formatSpeed(track.maxSpeed)}</Text>
+          <Text style={styles.statLabel}>Vel. Max (km/h)</Text>
             </View>
           </View>
         </View>
@@ -377,6 +603,11 @@ const TripDetailScreen = () => {
     }
   };
   
+  // Toggle map type between standard and satellite
+  const toggleMapType = () => {
+    setMapType(prevType => prevType === 'standard' ? 'satellite' : 'standard');
+  };
+  
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -415,9 +646,13 @@ const TripDetailScreen = () => {
         ref={mapRef}
         style={styles.map}
         initialRegion={mapRegion}
+        onPress={handleMapPress}
+        customMapStyle={darkMapStyle}
+        mapType={mapType}
+        userInterfaceStyle="dark"
       >
         {/* Punti di inizio e fine */}
-        {track.route && track.route.length > 0 && (
+        {track?.route && track.route.length > 0 && (
           <>
             <Marker
               coordinate={{
@@ -455,15 +690,56 @@ const TripDetailScreen = () => {
                 />
               );
             })}
+        
+            {/* Marker per il punto selezionato */}
+            {selectedPoint && (
+              <Marker
+                coordinate={{
+                  latitude: selectedPoint.lat,
+                  longitude: selectedPoint.lng
+                }}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={styles.selectedPointMarker}>
+                  <View style={styles.selectedPointInner} />
+                </View>
+                <Callout tooltip>
+                  <View style={styles.speedCallout}>
+                    <Text style={styles.speedCalloutTitle}>Velocità</Text>
+                    <Text style={styles.speedCalloutValue}>
+                      {formatSpeed(selectedPoint.speed)}
+                    </Text>
+                    <Text style={styles.speedCalloutTimestamp}>
+                      {new Date(selectedPoint.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                    </Text>
+                  </View>
+                </Callout>
+              </Marker>
+            )}
           </>
         )}
       </MapView>
-      
+
+      {/* Controllo tipo mappa */}
+      <TouchableOpacity 
+        style={styles.mapTypeButton} 
+        onPress={toggleMapType}
+      >
+        <Ionicons 
+          name={mapType === 'standard' ? 'map' : 'earth'} 
+          size={22} 
+          color="white" 
+        />
+        <Text style={styles.mapTypeText}>
+          {mapType === 'standard' ? 'Satellite' : 'Standard'}
+        </Text>
+      </TouchableOpacity>
+  
       {/* Pulsante indietro */}
       <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
         <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
-      
+  
       {/* Bottom sheet con statistiche */}
       <Animated.View 
         style={[styles.bottomSheet, { height: bottomSheetHeight }]}
@@ -495,46 +771,21 @@ const TripDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', // Background color behind the map
+    backgroundColor: theme.colors.background,
   },
-  centered: {
+  mapContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: theme.colors.background,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  errorText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#FF3B30',
-    textAlign: 'center',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  backButton: {
-    position: 'absolute',
-    top: STATUS_BAR_HEIGHT + 10,
-    left: 15,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
+  mapStyle: {
+    flex: 1,
   },
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -544,25 +795,283 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 10,
   },
-  headerContainer: {
-    width: '100%',
-    padding: 16,
-    alignItems: 'center',
-    borderBottomWidth: 0,
-    borderBottomColor: '#e0e0e0',
-  },
-  trackTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  dragHandle: {
+  bottomSheetDragHandle: {
     width: 40,
     height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#D0D0D0',
-    marginVertical: 8,
+    borderRadius: 3,
+    backgroundColor: theme.colors.border,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  header: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  date: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 5,
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? STATUS_BAR_HEIGHT + 10 : 10,
+    left: 10,
+    padding: 10,
+    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 20,
+  },
+  section: {
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: theme.colors.text,
+    paddingHorizontal: 16,
+  },
+  mapLegend: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.surface,
+    marginBottom: 15,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  statsSection: {
+    paddingVertical: 15,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  statCard: {
+    width: '48%',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 5,
+    color: theme.colors.text,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  infoContainer: {
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  infoRow: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  infoValue: {
+    fontSize: 15,
+    color: theme.colors.text,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  tag: {
+    backgroundColor: 'rgba(0, 122, 255, 0.2)',
+    borderRadius: 15,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+  },
+  vehicleContainer: {
+    paddingVertical: 15,
+    borderTopWidth: 1, 
+    borderTopColor: theme.colors.border,
+  },
+  vehicleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  vehicleIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 122, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  vehicleDetails: {
+    flex: 1,
+  },
+  vehicleName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+  },
+  vehicleModel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  shareContainer: {
+    marginTop: 15,
+    marginBottom: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  shareText: {
+    fontSize: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+    color: theme.colors.text,
+  },
+  visibilityText: {
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    width: 200,
+  },
+  makePublicButton: {
+    backgroundColor: theme.colors.success,
+  },
+  makePrivateButton: {
+    backgroundColor: theme.colors.error,
+  },
+  shareButtonText: {
+    color: theme.colors.white,
+    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  selectedPointMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 2,
+    borderColor: theme.colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedPointInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF00FF',
+  },
+  speedCallout: {
+    width: 120,
+    padding: 10,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: theme.colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  speedCalloutTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: 3,
+  },
+  speedCalloutValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: 3,
+  },
+  speedCalloutTimestamp: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: theme.colors.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: theme.colors.error,
+    textAlign: 'center',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
   },
   minStatsContainer: {
     width: '100%',
@@ -583,12 +1092,12 @@ const styles = StyleSheet.create({
   minStatValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: theme.colors.text,
     marginVertical: 4,
   },
   minStatLabel: {
     fontSize: 12,
-    color: '#777',
+    color: theme.colors.textSecondary,
   },
   vehicleBadgeContainer: {
     alignItems: 'center',
@@ -598,7 +1107,7 @@ const styles = StyleSheet.create({
   vehicleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f8ff',
+    backgroundColor: 'rgba(0, 122, 255, 0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,
@@ -606,7 +1115,7 @@ const styles = StyleSheet.create({
   vehicleBadgeText: {
     marginLeft: 6,
     fontSize: 13,
-    color: '#007AFF',
+    color: theme.colors.primary,
   },
   scrollContent: {
     flex: 1,
@@ -614,169 +1123,46 @@ const styles = StyleSheet.create({
   fullStatsContainer: {
     paddingBottom: 30,
   },
-  sectionTitle: {
+  headerContainer: {
+    width: '100%',
+    padding: 16,
+    alignItems: 'center',
+    borderBottomWidth: 0,
+    borderBottomColor: theme.colors.border,
+  },
+  trackTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-    paddingHorizontal: 16,
-  },
-  legendContainer: {
-    marginVertical: 10,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-  },
-  legendItems: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 8,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 6,
-  },
-  legendText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  statsSection: {
-    paddingVertical: 15,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginVertical: 5,
-    color: '#333',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  infoContainer: {
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  infoRow: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 15,
-    color: '#333',
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  tag: {
-    backgroundColor: '#e1f5fe',
-    borderRadius: 15,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginRight: 8,
+    color: theme.colors.text,
     marginBottom: 8,
   },
-  tagText: {
-    fontSize: 14,
-    color: '#0277bd',
+  dragHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: theme.colors.border,
+    marginVertical: 8,
+    alignSelf: 'center',
   },
-  vehicleContainer: {
-    paddingVertical: 15,
-    borderTopWidth: 1, 
-    borderTopColor: '#f0f0f0',
-  },
-  vehicleCard: {
+  mapTypeButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? STATUS_BAR_HEIGHT + 10 : 10,
+    right: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 16,
-  },
-  vehicleIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#e1f5fe',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  vehicleDetails: {
-    flex: 1,
-  },
-  vehicleName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  vehicleModel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  shareContainer: {
-    marginTop: 15,
-    marginBottom: 10,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    alignItems: 'center',
-  },
-  shareText: {
-    fontSize: 16,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  visibilityText: {
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 20,
-    width: 200,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 10,
   },
-  makePublicButton: {
-    backgroundColor: '#4CAF50',
-  },
-  makePrivateButton: {
-    backgroundColor: '#FF5722',
-  },
-  shareButtonText: {
+  mapTypeText: {
     color: 'white',
-    marginLeft: 8,
-    fontWeight: 'bold',
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Image, Alert } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { getFollowingList, getFollowersList, followUser, unfollowUser } from '../../api/services/userService'; // Need these API functions
 import { useAuth } from '../../context/AuthContext';
 import { theme } from '../../styles/theme';
@@ -12,6 +12,7 @@ const Tab = createMaterialTopTabNavigator();
 // Component for rendering each user in the list
 const UserListItem = ({ user, currentUserId, onFollowToggle }) => {
   const navigation = useNavigation();
+  const { refreshUserProfile } = useAuth();
   const [isFollowing, setIsFollowing] = useState(user.isFollowing); // Assuming API provides this
   const [loadingFollow, setLoadingFollow] = useState(false);
 
@@ -19,23 +20,43 @@ const UserListItem = ({ user, currentUserId, onFollowToggle }) => {
       if (loadingFollow) return;
       setLoadingFollow(true);
       try {
+          let response;
           if (isFollowing) {
-              await unfollowUser(user.username);
+              response = await unfollowUser(user.username || user._id);
               setIsFollowing(false);
           } else {
-              await followUser(user.username);
+              response = await followUser(user.username || user._id);
               setIsFollowing(true);
           }
-          onFollowToggle(user._id, !isFollowing); // Notify parent list if needed
+          
+          // Notify parent list to update local UI
+          onFollowToggle(user._id, !isFollowing);
+          
+          // Get latest follower/following counts by refreshing the user profile
+          try {
+              await refreshUserProfile();
+              console.log('User profile refreshed after follow/unfollow action');
+          } catch (refreshError) {
+              console.error("Errore nell'aggiornare il profilo utente:", refreshError);
+              // No need to show an error to the user for this operation
+          }
       } catch (error) {
           console.error("Error toggling follow:", error);
-          Alert.alert("Errore", "Impossibile aggiornare lo stato follow.");
-          // Optionally revert UI state
-          // setIsFollowing(!isFollowing);
+          // Show friendly error message and don't change UI state
+          Alert.alert(
+              "Errore", 
+              "Impossibile aggiornare lo stato follow. Verifica la connessione e riprova."
+          );
+          // Don't change the isFollowing state since the operation failed
       } finally {
           setLoadingFollow(false);
       }
   };
+
+  // Keep isFollowing state in sync with props
+  useEffect(() => {
+    setIsFollowing(user.isFollowing);
+  }, [user.isFollowing]);
 
   const navigateToProfile = () => {
     if (user._id === currentUserId) {
@@ -48,12 +69,17 @@ const UserListItem = ({ user, currentUserId, onFollowToggle }) => {
   return (
     <TouchableOpacity style={styles.userItemContainer} onPress={navigateToProfile}>
       <Image
-        source={user.profileImage ? { uri: user.profileImage } : require('../../assets/images/default_profile.png')}
+        source={
+          user.profileImage && user.profileImage !== '' 
+            ? { uri: user.profileImage } 
+            : require('../../assets/images/default_profile.png')
+        }
         style={styles.userAvatar}
+        defaultSource={require('../../assets/images/default_profile.png')}
       />
       <View style={styles.userInfo}>
-        <Text style={styles.userName}>{user.name || user.username}</Text>
-        <Text style={styles.userUsername}>@{user.username}</Text>
+        <Text style={styles.userName}>{user.name || user.username || 'Utente'}</Text>
+        <Text style={styles.userUsername}>@{user.username || 'username'}</Text>
       </View>
       {user._id !== currentUserId && (
         <TouchableOpacity onPress={handleFollowToggle} style={[styles.followButton, isFollowing ? styles.unfollowButton : {}]} disabled={loadingFollow}>
@@ -74,8 +100,8 @@ const UserListItem = ({ user, currentUserId, onFollowToggle }) => {
 const ConnectionList = ({ listType }) => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { username } = route.params; // Username of the profile being viewed
-  const { user: currentUser } = useAuth();
+  const { username } = route.params || {}; // Username of the profile being viewed
+  const { user: currentUser, refreshUserProfile } = useAuth();
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +109,13 @@ const ConnectionList = ({ listType }) => {
   // Add pagination state if needed: page, setPage, hasMore, setHasMore
 
   const fetchData = useCallback(async () => {
+    // Verifica che username sia definito
+    if (!username) {
+      setError('Nome utente non specificato');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -92,23 +125,60 @@ const ConnectionList = ({ listType }) => {
       } else { // listType === 'followers'
         response = await getFollowersList(username); // Fetch users following the profile user
       }
-      // Assuming the API returns an array of users directly, or nested like { users: [...] }
-      // Adjust according to your actual API response structure
-      const fetchedUsers = response.users || response;
-      // Optionally enrich with 'isFollowing' status relative to the *current* logged-in user
-      // This might require another API call or backend logic modification
-      setUsers(fetchedUsers || []);
+      
+      // Process response data, ensuring it's in the right format
+      if (response) {
+        let fetchedUsers = [];
+        
+        // Handle different response formats
+        if (Array.isArray(response)) {
+          fetchedUsers = response;
+        } else if (response.users && Array.isArray(response.users)) {
+          fetchedUsers = response.users;
+        } else if (response.connections && Array.isArray(response.connections)) {
+          fetchedUsers = response.connections;
+        } else if (response.followers && Array.isArray(response.followers)) {
+          fetchedUsers = response.followers;
+        }
+        
+        // Ensure each user has the isFollowing property set
+        if (currentUser && currentUser.connections) {
+          fetchedUsers = fetchedUsers.map(user => ({
+            ...user,
+            isFollowing: currentUser.connections.some(id => 
+              id === user._id || id === user.username
+            )
+          }));
+        }
+        
+        setUsers(fetchedUsers);
+        console.log(`Loaded ${fetchedUsers.length} ${listType}`);
+      } else {
+        // Handle empty response
+        console.log(`Empty response for ${listType}`);
+        setUsers([]);
+      }
     } catch (err) {
       console.error(`Error fetching ${listType}:`, err);
       setError(`Impossibile caricare la lista ${listType === 'following' ? 'following' : 'followers'}.`);
+      setUsers([]); // Imposta un array vuoto in caso di errore
     } finally {
       setLoading(false);
     }
-  }, [username, listType]);
+  }, [username, listType, currentUser]);
 
+  // Fetch data when component mounts or dependencies change
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Refresh data when the component is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchData();
+      return () => {}; // Cleanup function
+    }, [fetchData])
+  );
 
   // Handle follow state updates from child components if needed
   const handleFollowStateChange = (targetUserId, newFollowState) => {
@@ -125,7 +195,15 @@ const ConnectionList = ({ listType }) => {
   }
 
   if (error) {
-    return <Text style={styles.errorText}>{error}</Text>;
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={50} color={theme.colors.error} />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>Riprova</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -138,11 +216,22 @@ const ConnectionList = ({ listType }) => {
             onFollowToggle={handleFollowStateChange}
         />
       )}
-      keyExtractor={(item) => item._id.toString()}
+      keyExtractor={(item, index) => {
+        // Use a combination of ID and index to ensure uniqueness
+        if (item._id) {
+          return `user-${item._id}-${index}`;
+        } else if (item.username) {
+          return `user-${item.username}-${index}`;
+        } else {
+          return `user-index-${index}`;
+        }
+      }}
       style={styles.list}
       contentContainerStyle={users.length === 0 ? styles.emptyListContainer : {}}
       ListEmptyComponent={() => (
-          <Text style={styles.emptyText}>Nessun utente trovato.</Text>
+          <Text style={styles.emptyText}>
+            {listType === 'following' ? 'Questo utente non segue nessuno.' : 'Questo utente non ha follower.'}
+          </Text>
       )}
       // Add onEndReached for pagination if implemented
     />
@@ -150,8 +239,30 @@ const ConnectionList = ({ listType }) => {
 };
 
 // Main Connections Screen using Top Tabs
-const ConnectionsScreen = ({ route }) => {
-  const { username, initialTab } = route.params; // Get target username and optionally which tab to open first
+const ConnectionsScreen = () => {
+  const route = useRoute();
+  const { username, initialTab } = route.params || {}; // Get target username and optionally which tab to open first
+  const navigation = useNavigation();
+
+  // Se username non è definito, mostra un errore e ritorna alla schermata precedente
+  useEffect(() => {
+    if (!username) {
+      Alert.alert(
+        "Errore",
+        "Username non specificato. Impossibile visualizzare le connessioni.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [username, navigation]);
+
+  if (!username) {
+    return (
+      <View style={styles.errorContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.errorText}>Caricamento in corso...</Text>
+      </View>
+    );
+  }
 
   return (
     <Tab.Navigator
@@ -182,11 +293,29 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: 30,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: theme.colors.background,
+  },
   errorText: {
     textAlign: 'center',
-    marginTop: 30,
+    marginTop: 15,
     color: theme.colors.error,
     fontSize: 16,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginTop: 15,
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontWeight: 'bold',
   },
   emptyListContainer: {
     flex: 1,

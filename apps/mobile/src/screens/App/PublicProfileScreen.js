@@ -17,6 +17,7 @@ import { getUserTracks } from '../../api/services/trackService';
 import { formatDistance, formatTime, formatSpeed } from '../../utils/formatters';
 import VehicleCard from '../../components/VehicleCard';
 import { theme } from '../../styles/theme';
+import { useAuth } from '../../context/AuthContext';
 
 const HistoryItem = ({ track, onPress }) => {
   const formatDate = (dateString) => {
@@ -104,6 +105,7 @@ const PublicProfileScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { username } = route.params;
+  const { refreshUserProfile } = useAuth();
   
   const [profileData, setProfileData] = useState(null);
   const [userTracks, setUserTracks] = useState([]);
@@ -179,14 +181,37 @@ const PublicProfileScreen = () => {
     setFollowLoading(true);
     
     try {
+      let response;
       if (isFollowing) {
-        await unfollowUser(username);
+        response = await unfollowUser(username);
         setIsFollowing(false);
+        
+        // Aggiorna localmente il contatore dei follower
+        setProfileData(prevData => ({
+          ...prevData,
+          followersCount: Math.max(0, (prevData.followersCount || 0) - 1)
+        }));
+        
         Alert.alert('Successo', `Hai smesso di seguire @${username}`);
       } else {
-        await followUser(username);
+        response = await followUser(username);
         setIsFollowing(true);
+        
+        // Aggiorna localmente il contatore dei follower
+        setProfileData(prevData => ({
+          ...prevData,
+          followersCount: (prevData.followersCount || 0) + 1
+        }));
+        
         Alert.alert('Successo', `Hai iniziato a seguire @${username}`);
+      }
+      
+      // Dopo aver aggiornato lo stato di follow, aggiorna anche il profilo utente corrente
+      try {
+        await refreshUserProfile();
+        console.log('User profile refreshed after follow/unfollow action');
+      } catch (refreshError) {
+        console.error("Errore nell'aggiornare il profilo utente:", refreshError);
       }
     } catch (err) {
       console.error('Error toggling follow status:', err);
@@ -202,10 +227,24 @@ const PublicProfileScreen = () => {
   };
 
   const handleNavigateToConnections = (initialTab) => {
+    if (username) {
+      // Make sure we have the latest data before navigating
+      refreshUserProfile().then(() => {
+        navigation.navigate('Connections', {
+          username: username,
+          initialTab: initialTab // 'followers' or 'following'
+        });
+      }).catch(err => {
+        console.error('Failed to refresh user data before viewing connections:', err);
+        // Navigate anyway even if refresh fails
     navigation.navigate('Connections', {
-        username: username, // Pass the viewed profile's username
+          username: username,
         initialTab: initialTab
     });
+      });
+    } else {
+      Alert.alert("Errore", "Nome utente non disponibile");
+    }
   };
 
   if (loadingProfile && !refreshing) {
@@ -244,8 +283,16 @@ const PublicProfileScreen = () => {
       <View style={styles.header}>
         <View style={styles.profileInfo}>
           <Image 
-            source={profileData?.profileImage ? { uri: profileData.profileImage } : require('../../assets/images/default_profile.png')}
+            source={
+              profileData?.profileImage && profileData.profileImage !== ''
+                ? { uri: profileData.profileImage }
+                : require('../../assets/images/default_profile.png')
+            }
             style={styles.avatar}
+            defaultSource={require('../../assets/images/default_profile.png')}
+            onError={(e) => {
+              console.log('Errore nel caricamento immagine profilo:', e.nativeEvent.error);
+            }}
           />
           <View style={styles.profileText}>
             <Text style={styles.name}>{profileData?.name || username}</Text>

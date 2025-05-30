@@ -27,6 +27,10 @@ export const AuthProvider = ({ children }) => {
                 if (response.data) {
                     userData = response.data;
                     
+                    // Ensure the follower/following counts are properly set
+                    userData.followersCount = userData.followersCount || 0;
+                    userData.followingCount = userData.connections?.length || userData.followingCount || 0;
+                    
                     // Check if profile is incomplete (needs onboarding)
                     if (!response.data.name || !response.data.username) {
                         setNeedsOnboarding(true);
@@ -35,9 +39,9 @@ export const AuthProvider = ({ children }) => {
                     }
                     
                     // Aggiorna lo stato dell'utente con i dati reali
-                    setUser(response.data);
+                    setUser(userData);
                     // Salva i dati utente in AsyncStorage
-                    await AsyncStorage.setItem('userData', JSON.stringify(response.data));
+                    await AsyncStorage.setItem('userData', JSON.stringify(userData));
                 }
             } catch (profileError) {
                 // Se il primo tentativo fallisce e non abbiamo ancora i dati utente, prova /me
@@ -50,6 +54,10 @@ export const AuthProvider = ({ children }) => {
                         if (response.data) {
                             userData = response.data;
                             
+                            // Ensure the follower/following counts are properly set
+                            userData.followersCount = userData.followersCount || 0;
+                            userData.followingCount = userData.connections?.length || userData.followingCount || 0;
+                            
                             // Check if profile is incomplete (needs onboarding)
                             if (!response.data.name || !response.data.username) {
                                 setNeedsOnboarding(true);
@@ -58,9 +66,9 @@ export const AuthProvider = ({ children }) => {
                             }
                             
                             // Aggiorna lo stato dell'utente con i dati reali
-                            setUser(response.data);
+                            setUser(userData);
                             // Salva i dati utente in AsyncStorage
-                            await AsyncStorage.setItem('userData', JSON.stringify(response.data));
+                            await AsyncStorage.setItem('userData', JSON.stringify(userData));
                         }
                     } catch (meError) {
                         console.error('Error fetching from /api/users/me:', meError);
@@ -255,7 +263,37 @@ export const AuthProvider = ({ children }) => {
     // Aggiungiamo la funzione refreshUserProfile per aggiornare i dati utente
     const refreshUserProfile = async () => {
         try {
+            console.log("Refreshing user profile data...");
             const updatedUser = await getUserProfile();
+            
+            // Aggiorniamo esplicitamente l'utente salvato in AsyncStorage
+            if (updatedUser) {
+                // Ensure we preserve the connections data in the user object
+                const updatedUserWithConnections = {
+                    ...updatedUser,
+                    // If the updated user doesn't have connections data but existing user does, preserve it
+                    connections: updatedUser.connections || user?.connections
+                };
+                
+                // Update the user state with updated data
+                setUser(updatedUserWithConnections);
+                
+                // Save to AsyncStorage
+                await AsyncStorage.setItem('userData', JSON.stringify(updatedUserWithConnections));
+                
+                console.log("User profile refreshed successfully with data:", JSON.stringify(updatedUserWithConnections));
+                
+                // Verifica se i contatori di follower/following sono cambiati
+                if (user?.followersCount !== updatedUser.followersCount || 
+                    user?.followingCount !== updatedUser.followingCount) {
+                    console.log("Follower/following counts updated:", 
+                        `Followers: ${user?.followersCount || 0} -> ${updatedUser.followersCount || 0}`,
+                        `Following: ${user?.followingCount || 0} -> ${updatedUser.followingCount || 0}`);
+                }
+            } else {
+                console.log("Failed to refresh user profile, no data returned");
+            }
+            
             return updatedUser;
         } catch (err) {
             console.error("Error refreshing user profile:", err);

@@ -206,11 +206,11 @@ const AppNavigator = () => {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: '#777',
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: theme.colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
+          borderTopColor: theme.colors.border,
           paddingBottom: Platform.OS === 'ios' ? 25 : 5,
           paddingTop: 5,
           height: Platform.OS === 'ios' ? 90 : 60,
