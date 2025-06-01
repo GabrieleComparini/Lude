@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { searchUsers } from '../../api/services/userService';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,6 +12,7 @@ const SearchScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   // Reset search results when screen is focused
   useFocusEffect(
@@ -105,7 +107,11 @@ const SearchScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      { paddingTop: insets.top }
+    ]}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput

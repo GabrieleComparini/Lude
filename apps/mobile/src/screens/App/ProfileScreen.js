@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, ActivityIndicator, RefreshControl, Alert, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, FlatList, ActivityIndicator, RefreshControl, Alert, Platform, Animated, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -11,79 +11,73 @@ import VehicleCard from '../../components/VehicleCard';
 import SpeedDistributionChart from '../../components/charts/SpeedDistributionChart';
 import { theme } from '../../styles/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Component for profile header with avatar and user info
-const ProfileHeader = ({ user, onEditProfile, onManageConnections }) => {
+const ProfileHeader = ({ user, onEditProfile, onManageConnections, onOpenSettings }) => {
   if (!user) return null;
   
   return (
     <View style={styles.profileHeaderContainer}>
-      <LinearGradient
-        colors={[theme.colors.primary + '40', 'transparent']}
-        style={styles.headerGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            {user.profileImage ? (
-              <Image source={{ uri: user.profileImage }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarText}>
-                  {user.name ? user.name.charAt(0).toUpperCase() : '?'}
-                </Text>
-              </View>
-            )}
-            <TouchableOpacity 
-              style={styles.editAvatarButton}
-              onPress={onEditProfile}
-            >
-              <Ionicons name="camera" size={14} color="white" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.userInfoContainer}>
-            <Text style={styles.userName}>{user.name || user.username}</Text>
-            <Text style={styles.userUsername}>@{user.username}</Text>
-            
-            {user.bio ? (
-              <Text style={styles.userBio} numberOfLines={2}>{user.bio}</Text>
-            ) : null}
-            
-            <View style={styles.connectionStats}>
-              <TouchableOpacity 
-                style={styles.connectionStat}
-                onPress={() => onManageConnections('following')}
-              >
-                <Text style={styles.connectionCount}>
-                  {user.connectionsCount || 0}
-                </Text>
-                <Text style={styles.connectionLabel}>Following</Text>
-              </TouchableOpacity>
-              
-              <View style={styles.connectionDivider} />
-              
-              <TouchableOpacity 
-                style={styles.connectionStat}
-                onPress={() => onManageConnections('followers')}
-              >
-                <Text style={styles.connectionCount}>
-                  {user.followersCount || 0}
-                </Text>
-                <Text style={styles.connectionLabel}>Followers</Text>
-              </TouchableOpacity>
+      <View style={styles.profileHeader}>
+        <View style={styles.avatarContainer}>
+          {user.profileImage ? (
+            <Image source={{ uri: user.profileImage }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Text style={styles.avatarText}>
+                {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+              </Text>
             </View>
-          </View>
-          
+          )}
           <TouchableOpacity 
-            style={styles.editProfileButton}
+            style={styles.editAvatarButton}
             onPress={onEditProfile}
           >
-            <Text style={styles.editProfileText}>Edit</Text>
+            <Ionicons name="camera" size={14} color="white" />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+
+        <View style={styles.userInfoContainer}>
+          <Text style={styles.userName}>{user.name || user.username}</Text>
+          <Text style={styles.userUsername}>@{user.username}</Text>
+          
+          {user.bio ? (
+            <Text style={styles.userBio} numberOfLines={2}>{user.bio}</Text>
+          ) : null}
+          
+          <View style={styles.connectionStats}>
+            <TouchableOpacity 
+              style={styles.connectionStat}
+              onPress={() => onManageConnections('following')}
+            >
+              <Text style={styles.connectionCount}>
+                {user.connectionsCount || 0}
+              </Text>
+              <Text style={styles.connectionLabel}>Following</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.connectionDivider} />
+            
+            <TouchableOpacity 
+              style={styles.connectionStat}
+              onPress={() => onManageConnections('followers')}
+            >
+              <Text style={styles.connectionCount}>
+                {user.followersCount || 0}
+              </Text>
+              <Text style={styles.connectionLabel}>Followers</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.editProfileButton}
+          onPress={onEditProfile}
+        >
+          <Text style={styles.editProfileText}>Edit</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -388,6 +382,14 @@ const ProfileScreen = () => {
   const [statsError, setStatsError] = useState(null);
   const [tracksError, setTracksError] = useState(null);
   const [vehicleError, setVehicleError] = useState(null);
+  const insets = useSafeAreaInsets();
+
+  // Nascondi l'header di navigazione quando questo schermo è a fuoco
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
 
   // Refresh user data when screen is focused
   useFocusEffect(
@@ -528,19 +530,54 @@ const ProfileScreen = () => {
     navigation.navigate('TripDetail', { screen: 'HistoryList' });
   };
 
+  const handleOpenSettings = () => {
+    navigation.navigate('Settings');
+  };
+
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Gradient background that extends under the status bar */}
+      <LinearGradient
+        colors={[theme.colors.primary + '80', theme.colors.primary + '70', theme.colors.primary + '30', 'transparent']}
+        style={[styles.headerBackground]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.7 }}
+        locations={[0, 0.2, 0.6, 1]}
+      />
+      
+      {/* Settings button */}
+      <TouchableOpacity
+        style={[
+          styles.settingsButton,
+          { top: insets.top + 10 }
+        ]}
+        onPress={handleOpenSettings}
+      >
+        <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
+      </TouchableOpacity>
+      
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingTop: insets.top + 10 }
+        ]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.colors.primary} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh} 
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
       >
         <ProfileHeader 
           user={user} 
           onEditProfile={handleEditProfile}
           onManageConnections={handleNavigateToConnections}
+          onOpenSettings={handleOpenSettings}
         />
         
         <StatsSection 
@@ -603,8 +640,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  scrollContent: {
-    paddingBottom: 30,
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 250, // Aumentata altezza per garantire copertura completa
+    zIndex: 1,
+  },
+  settingsButton: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 100,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(30, 30, 32, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  scrollView: {
+    flex: 1,
+    zIndex: 2,
+  },
+  contentContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   loadingContainer: {
     padding: 20,
@@ -624,19 +690,17 @@ const styles = StyleSheet.create({
   },
   // Profile Header styles
   profileHeaderContainer: {
-    overflow: 'hidden',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    marginHorizontal: 16,
+    marginTop: 20,
     marginBottom: 20,
-  },
-  headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40, 
-    paddingBottom: 24,
+    borderRadius: 24,
+    backgroundColor: 'rgba(40, 40, 45, 0.5)', // Sottile sfondo semitrasparente
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   avatarContainer: {
     position: 'relative',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, StatusBar, Text, Platform } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -17,24 +17,6 @@ const ExploreFeedScreen = () => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" />
-      
-      {/* Header with blur effect */}
-      <View style={styles.header}>
-        {Platform.OS === 'ios' ? (
-          <BlurView intensity={30} tint="dark" style={styles.headerBlur}>
-            <Text style={styles.headerTitle}>Explore</Text>
-          </BlurView>
-        ) : (
-          <LinearGradient
-            colors={[theme.colors.surface, theme.colors.background]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <Text style={styles.headerTitle}>Explore</Text>
-          </LinearGradient>
-        )}
-      </View>
       
       {/* Tab Navigator with refined iOS-like styling */}
       <Tab.Navigator
@@ -72,7 +54,7 @@ const ExploreFeedScreen = () => {
         }}
       >
         <Tab.Screen
-          name="FriendsFeed"
+          name="ExploreFriendsFeed"
           component={FriendsFeedScreen}
           options={{
             tabBarLabel: 'Friends',
@@ -82,7 +64,7 @@ const ExploreFeedScreen = () => {
           }}
         />
         <Tab.Screen
-          name="GlobalFeed"
+          name="ExploreGlobalFeed"
           component={GlobalFeedScreen}
           options={{
             tabBarLabel: 'Discover',
@@ -100,27 +82,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  },
-  header: {
-    height: 60,
-    width: '100%',
-    overflow: 'hidden',
-  },
-  headerBlur: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
+  }
 });
 
 export default ExploreFeedScreen; 

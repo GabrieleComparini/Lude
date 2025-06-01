@@ -6,10 +6,8 @@ import { TouchableOpacity, View, Text, Platform } from 'react-native';
 import { theme } from '../styles/theme';
 
 // Import Screens
-import HomeScreen from '../screens/App/HomeScreen';
 import MapScreen from '../screens/App/MapScreen';
 import SearchScreen from '../screens/App/SearchScreen';
-import ExploreScreen from '../screens/App/ExploreScreen';
 import ProfileScreen from '../screens/App/ProfileScreen';
 import SettingsScreen from '../screens/App/SettingsScreen';
 import EditProfileScreen from '../screens/App/EditProfileScreen';
@@ -19,6 +17,11 @@ import CommentsScreen from '../screens/App/Feed/CommentsScreen';
 import PublicProfileScreen from '../screens/App/Feed/PublicProfileScreen';
 import ExploreFeedScreen from '../screens/App/Feed/ExploreFeedScreen';
 import ConnectionsScreen from '../screens/App/ConnectionsScreen';
+// Community Screen
+import CommunityScreen from '../screens/App/Community/CommunityScreen';
+import CommunityDetailsScreen from '../screens/App/Community/CommunityDetailsScreen';
+import CreateCommunityScreen from '../screens/App/Community/CreateCommunityScreen';
+import CreateCommunityPostScreen from '../screens/App/Community/CreateCommunityPostScreen';
 // Gamification Screens
 import AchievementsScreen from '../screens/App/Gamification/AchievementsScreen';
 import LeaderboardsScreen from '../screens/App/Gamification/LeaderboardsScreen';
@@ -31,10 +34,10 @@ import AddEditVehicleScreen from '../screens/App/VehicleForms/AddEditVehicleScre
 // const PublicProfileScreen = () => <ProfileScreen isPublic={true} />;
 
 const Tab = createBottomTabNavigator();
-const HomeStack = createNativeStackNavigator();
+const ExploreStack = createNativeStackNavigator();
 const MapStack = createNativeStackNavigator();
 const SearchStack = createNativeStackNavigator();
-const ExploreStack = createNativeStackNavigator();
+const CommunityStack = createNativeStackNavigator(); // Add Community Stack
 const ProfileStack = createNativeStackNavigator();
 const SettingsStack = createNativeStackNavigator();
 const VehicleStack = createNativeStackNavigator();
@@ -44,15 +47,15 @@ const VehicleStack = createNativeStackNavigator();
 // are only accessible through the Auth Navigator and not from the main app flow.
 // This separation ensures users can't accidentally return to onboarding screens.
 
-// Aggiungo lo stack navigator per Home
-function HomeStackNavigator() {
+// Replace HomeStackNavigator with ExploreStackNavigator
+function ExploreStackNavigator() {
   return (
-    <HomeStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <HomeStack.Screen name="HomeScreen" component={HomeScreen} options={{ title: 'Home' }} />
-      <HomeStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
-      <HomeStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
-      <HomeStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
-    </HomeStack.Navigator>
+    <ExploreStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <ExploreStack.Screen name="ExploreFeed" component={ExploreFeedScreen} options={{ title: 'Explore', headerShown: false }} />
+      <ExploreStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <ExploreStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <ExploreStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+    </ExploreStack.Navigator>
   );
 }
 
@@ -61,19 +64,9 @@ function HomeStackNavigator() {
 function MapStackNavigator() {
   return (
     <MapStack.Navigator 
-        screenOptions={({ navigation }) => ({
-          ...AppNavigatorScreenOptions.stack,
-          headerRight: () => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Settings')}
-              style={{ marginRight: 10 }}
-            >
-              <Ionicons name="settings-outline" size={24} color={theme.colors.white || '#fff'} />
-            </TouchableOpacity>
-          ),
-        })}
+        screenOptions={AppNavigatorScreenOptions.stack}
     >
-      <MapStack.Screen name="MapHome" component={MapScreen} options={{ title: 'Map'}} />
+      <MapStack.Screen name="MapHome" component={MapScreen} options={{ title: 'Map', headerShown: false }} />
       <MapStack.Screen 
           name="SaveTrack" 
           component={SaveTrackScreen} 
@@ -124,7 +117,7 @@ function MapStackNavigator() {
 function SearchStackNavigator() {
   return (
     <SearchStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <SearchStack.Screen name="SearchUsers" component={SearchScreen} options={{ title: 'Cerca' }} />
+      <SearchStack.Screen name="SearchUsers" component={SearchScreen} options={{ title: 'Cerca', headerShown: false }} />
       <SearchStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
       <SearchStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
       <SearchStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
@@ -133,14 +126,52 @@ function SearchStackNavigator() {
   );
 }
 
-function ExploreStackNavigator() {
+// Add Community Stack Navigator
+function CommunityStackNavigator() {
   return (
-    <ExploreStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
-      <ExploreStack.Screen name="ExploreFeed" component={ExploreFeedScreen} options={{ title: 'Explore', headerShown: false }} />
-      <ExploreStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
-      <ExploreStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
-      <ExploreStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
-    </ExploreStack.Navigator>
+    <CommunityStack.Navigator screenOptions={AppNavigatorScreenOptions.stack}>
+      <CommunityStack.Screen name="CommunityHome" component={CommunityScreen} options={{ title: 'Community', headerShown: false }} />
+      <CommunityStack.Screen 
+        name="CommunityDetails" 
+        component={CommunityDetailsScreen} 
+        options={{ 
+          title: 'Community Details',
+          headerShown: false // Header is handled within the component for animation
+        }} 
+      />
+      <CommunityStack.Screen 
+        name="CreateCommunity" 
+        component={CreateCommunityScreen} 
+        options={{ 
+          title: 'Create Community',
+          headerShown: false // Header is handled within the component
+        }} 
+      />
+      <CommunityStack.Screen 
+        name="CreateCommunityPost" 
+        component={CreateCommunityPostScreen} 
+        options={{ 
+          title: 'Create Post',
+          headerShown: false // Header is handled within the component
+        }} 
+      />
+      <CommunityStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
+      <CommunityStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
+      <CommunityStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
+      <CommunityStack.Screen name="Comments" component={CommentsScreen} options={{ title: 'Commenti' }} />
+      {/* Track selection for community posts */}
+      <CommunityStack.Screen 
+        name="TrackSelection" 
+        component={TripDetailScreen} 
+        options={{ title: 'Select Track' }} 
+      />
+      {/* Route selection for community posts - placeholder using TripDetail for now */}
+      <CommunityStack.Screen 
+        name="RouteSelection" 
+        component={TripDetailScreen} 
+        options={{ title: 'Select Route' }} 
+      />
+    </CommunityStack.Navigator>
   );
 }
 
@@ -169,6 +200,10 @@ function ProfileStackNavigator() {
         component={EditProfileScreen}
         options={{ title: 'Modifica Profilo' }}
       />
+      <ProfileStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Impostazioni' }} />
+      <ProfileStack.Screen name="Achievements" component={AchievementsScreen} options={{ title: 'Obiettivi' }} />
+      <ProfileStack.Screen name="Leaderboards" component={LeaderboardsScreen} options={{ title: 'Classifiche' }} />
+      <ProfileStack.Screen name="Challenges" component={ChallengesScreen} options={{ title: 'Sfide' }} />
       <ProfileStack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connessioni' }} />
       <ProfileStack.Screen name="TripDetail" component={TripDetailScreen} options={{ title: 'Dettaglio Tracciato' }} />
       <ProfileStack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ title: 'Profilo Utente' }} />
@@ -218,12 +253,12 @@ const AppNavigator = () => {
       }}
     >
       <Tab.Screen 
-        name="HomeTab" 
-        component={HomeStackNavigator} 
+        name="ExploreTab" 
+        component={ExploreStackNavigator} 
         options={{
-          title: 'Home',
+          title: 'Explore',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -248,12 +283,12 @@ const AppNavigator = () => {
         }}
       />
       <Tab.Screen 
-        name="ExploreTab" 
-        component={ExploreStackNavigator} 
+        name="CommunityTab" 
+        component={CommunityStackNavigator} 
         options={{
-          title: 'Explore',
+          title: 'Community',
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={size} color={color} />
           ),
         }}
       />
