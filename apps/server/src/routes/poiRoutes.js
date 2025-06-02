@@ -27,7 +27,7 @@ const {
     deleteCategory
 } = require('../controllers/poiCategoryController');
 
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, isAdmin } = require('../middleware/authMiddleware');
 
 // POI routes
 router.route('/')
@@ -61,11 +61,11 @@ router.route('/:id/reviews/:reviewId/helpful')
 // POI category routes
 router.route('/categories')
     .get(getCategories)
-    .post(protect, admin, createCategory);
+    .post(protect, isAdmin, createCategory);
 
 router.route('/categories/:id')
     .get(getCategoryById)
-    .put(protect, admin, updateCategory)
-    .delete(protect, admin, deleteCategory);
+    .put(protect, isAdmin, updateCategory)
+    .delete(protect, isAdmin, deleteCategory);
 
 module.exports = router; 
