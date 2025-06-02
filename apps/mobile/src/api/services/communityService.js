@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_URL } from '../../config/apiConfig';
+import { API_URL } from '../../config/api';
 
 /**
  * Service for community-related API calls

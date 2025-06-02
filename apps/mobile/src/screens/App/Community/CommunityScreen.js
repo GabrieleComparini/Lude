@@ -15,8 +15,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { theme } from '../../../styles/theme';
-import { API_URL } from '../../../config/apiConfig';
-import { useAuth } from '../../../context/authContext';
+import { API_URL } from '../../../config/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const CommunityScreen = () => {
   const navigation = useNavigation();

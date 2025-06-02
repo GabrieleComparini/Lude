@@ -52,6 +52,7 @@ app.use('/api/leaderboards', require('./routes/leaderboardRoutes'));
 app.use('/api/challenges', require('./routes/challengeRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/communities', require('./routes/communityRoutes'));
+app.use('/api/pois', require('./routes/poiRoutes'));
 // Placeholder for future routes:
 // app.use('/api/analytics', require('./routes/analyticsRoutes'));
 

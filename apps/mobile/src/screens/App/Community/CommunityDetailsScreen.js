@@ -18,8 +18,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import { theme } from '../../../styles/theme';
-import { API_URL } from '../../../config/apiConfig';
-import { useAuth } from '../../../context/authContext';
+import { API_URL } from '../../../config/api';
+import { useAuth } from '../../../context/AuthContext';
 import PostCard from '../../../components/community/PostCard';
 
 const HEADER_MAX_HEIGHT = 200;
